@@ -1,0 +1,6 @@
+{
+  "name": "Freelancer Marketplace",
+  "description": "A comprehensive freelancer marketplace supporting client job listings, freelancer profiles, mock real-time messaging, applications tracker, and an admin management panel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
