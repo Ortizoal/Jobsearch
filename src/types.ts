@@ -33,6 +33,7 @@ export interface FreelancerProfile {
   email: string;
   rating: number;
   completedJobs: number;
+  isAdmin?: boolean;
 }
 
 export interface Application {

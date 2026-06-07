@@ -36,6 +36,7 @@ interface AdminPanelProps {
   onToggleFeatureJob: (id: string) => void;
   onDeleteProfile: (id: string) => void;
   onToggleVerifyProfile: (id: string) => void;
+  onToggleAdminProfile: (id: string) => void;
 }
 
 export default function AdminPanel({
@@ -48,7 +49,8 @@ export default function AdminPanel({
   onDeleteJob,
   onToggleFeatureJob,
   onDeleteProfile,
-  onToggleVerifyProfile
+  onToggleVerifyProfile,
+  onToggleAdminProfile
 }: AdminPanelProps) {
   const [activeSubtab, setActiveSubtab] = useState<'listings' | 'users' | 'security'>('listings');
   const [newPasscode, setNewPasscode] = useState('');
@@ -273,9 +275,14 @@ export default function AdminPanel({
                           className="w-10 h-10 rounded-full object-cover border"
                         />
                         <div className="min-w-0">
-                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1 truncate">
+                          <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 truncate">
                             {profile.name}
                             {profile.verified && <ShieldCheck className="w-4 h-4 text-indigo-600" />}
+                            {profile.isAdmin && (
+                              <span className="bg-purple-100 text-purple-800 text-[9px] font-extrabold uppercase rounded-full px-2 py-0.5 flex gap-0.5 items-center">
+                                <Award className="w-2.5 h-2.5 text-purple-705 fill-purple-200 shrink-0" /> Admin
+                              </span>
+                            )}
                           </h4>
                           <p className="text-xs text-indigo-600 truncate">{profile.title}</p>
                           <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
@@ -288,7 +295,20 @@ export default function AdminPanel({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onToggleAdminProfile(profile.id)}
+                          className={`p-1.5 px-3 rounded text-xs font-semibold border flex items-center gap-1 transition ${
+                            profile.isAdmin 
+                              ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100/70' 
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                          title={profile.isAdmin ? 'Revoke admin access rank' : 'Elevate user to platform administrator'}
+                        >
+                          <Award className={`w-3.5 h-3.5 ${profile.isAdmin ? 'text-purple-600 fill-purple-100' : ''}`} />
+                          {profile.isAdmin ? 'Revoke Admin' : 'Make Admin'}
+                        </button>
                         <button
                           type="button"
                           onClick={() => onToggleVerifyProfile(profile.id)}

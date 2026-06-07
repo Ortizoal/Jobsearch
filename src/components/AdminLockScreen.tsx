@@ -4,14 +4,21 @@
  */
 
 import React, { useState } from 'react';
-import { ShieldAlert, Key, Eye, EyeOff, AlertCircle, Lock } from 'lucide-react';
+import { ShieldAlert, Key, Eye, EyeOff, AlertCircle, Lock, ShieldCheck } from 'lucide-react';
 
 interface AdminLockScreenProps {
   onAuthorize: () => void;
   savedPasscode: string;
+  isProfileAdmin?: boolean;
+  adminProfileName?: string;
 }
 
-export default function AdminLockScreen({ onAuthorize, savedPasscode }: AdminLockScreenProps) {
+export default function AdminLockScreen({ 
+  onAuthorize, 
+  savedPasscode,
+  isProfileAdmin = false,
+  adminProfileName = ''
+}: AdminLockScreenProps) {
   const [enteredCode, setEnteredCode] = useState('');
   const [showCode, setShowCode] = useState(false);
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
@@ -47,6 +54,27 @@ export default function AdminLockScreen({ onAuthorize, savedPasscode }: AdminLoc
           <div className="bg-rose-50 border border-rose-100 p-3 rounded-lg flex items-start gap-2.5 text-left text-rose-800 text-xs animate-shake">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <span className="font-semibold">{errorStatus}</span>
+          </div>
+        )}
+
+        {isProfileAdmin && (
+          <div className="bg-purple-50/60 border border-purple-200/80 p-4 rounded-xl space-y-2.5 text-left border-dashed">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-purple-650 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-purple-950 uppercase tracking-wide">Admin Account Connected</h4>
+                <p className="text-[11px] text-purple-800 mt-0.5 leading-relaxed">
+                  You are exploring the simulator as <strong className="font-extrabold">{adminProfileName}</strong>, who has been granted administrator status. You can bypass the passcode check.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onAuthorize}
+              className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-lg tracking-wider uppercase transition shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              🔓 Bypass & Unlock Terminal
+            </button>
           </div>
         )}
 
@@ -89,13 +117,12 @@ export default function AdminLockScreen({ onAuthorize, savedPasscode }: AdminLoc
           </button>
         </form>
 
-        <div className="pt-4 border-t border-slate-100 text-center">
-          <div className="inline-flex items-center gap-1.5 text-xs text-indigo-700 font-semibold bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Developer Sandbox key: <strong className="font-bold underline">admin123</strong></span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-2">
-            The passkey can be customized once logged into the dashboard suite.
+        <div className="pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
+          <p className="font-semibold text-slate-500 mb-1 flex items-center justify-center gap-1">
+            <ShieldAlert className="w-3.5 h-3.5 text-indigo-500" /> Authorized personnel only
+          </p>
+          <p className="leading-relaxed">
+            The passkey can be customized inside the console security tab once verified.
           </p>
         </div>
       </div>

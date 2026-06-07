@@ -80,6 +80,9 @@ export default function App() {
   const [isAdminAuthorized, setIsAdminAuthorized] = useState<boolean>(() => {
     return sessionStorage.getItem('fm_is_admin_authorized') === 'true';
   });
+  const [selectedFreelancerId, setSelectedFreelancerId] = useState<string>(() => {
+    return localStorage.getItem('fm_selected_freelancer_id') || 'free-1';
+  });
   
   // Tabs trackers per role
   const [freelancerTab, setFreelancerTab] = useState<'find_work' | 'tracker' | 'profile' | 'messages'>('find_work');
@@ -124,18 +127,22 @@ export default function App() {
   // Skill Match filtering toggle for Finding Work (Freelancer role)
   const [matchMySkills, setMatchMySkills] = useState(false);
 
-  // Initialize and load default freelancer profile settings based on free-1
+  // Initialize and load default freelancer profile settings based on selectedFreelancerId
   useEffect(() => {
-    const sarahPrf = profiles.find(p => p.id === 'free-1');
-    if (sarahPrf) {
-      setProfileName(sarahPrf.name);
-      setProfileTitle(sarahPrf.title);
-      setProfileBio(sarahPrf.bio);
-      setProfileHourlyRate(sarahPrf.hourlyRate);
-      setProfileSkills(sarahPrf.skills || []);
-      setProfileEmail(sarahPrf.email);
+    const activePrf = profiles.find(p => p.id === selectedFreelancerId);
+    if (activePrf) {
+      setProfileName(activePrf.name);
+      setProfileTitle(activePrf.title);
+      setProfileBio(activePrf.bio);
+      setProfileHourlyRate(activePrf.hourlyRate);
+      setProfileSkills(activePrf.skills || []);
+      setProfileEmail(activePrf.email);
     }
-  }, [profiles]);
+  }, [profiles, selectedFreelancerId]);
+
+  useEffect(() => {
+    localStorage.setItem('fm_selected_freelancer_id', selectedFreelancerId);
+  }, [selectedFreelancerId]);
 
   // Save changes to localStorage on every update
   useEffect(() => {
@@ -170,8 +177,11 @@ export default function App() {
   const categories = ['All', 'Web Development', 'Design & Creative', 'Writing & Translation', 'Marketing & Sales'];
 
   // Current Users Simulation IDs
-  const CURRENT_FREELANCER_ID = 'free-1';
+  const CURRENT_FREELANCER_ID = selectedFreelancerId;
   const CURRENT_CLIENT_ID = 'ModernTech Ventures';
+
+  const activeFreelancerProfile = profiles.find(p => p.id === CURRENT_FREELANCER_ID);
+  const isProfileAdmin = activeFreelancerProfile?.isAdmin === true;
 
   const getCurrentUserId = () => {
     if (currentRole === 'freelancer') return CURRENT_FREELANCER_ID;
@@ -272,6 +282,12 @@ export default function App() {
   const handleToggleVerifyProfile = (profileId: string) => {
     setProfiles(prev => prev.map(p => 
       p.id === profileId ? { ...p, verified: !p.verified } : p
+    ));
+  };
+
+  const handleToggleAdminProfile = (profileId: string) => {
+    setProfiles(prev => prev.map(p => 
+      p.id === profileId ? { ...p, isAdmin: !p.isAdmin } : p
     ));
   };
 
@@ -682,13 +698,13 @@ export default function App() {
             Switch current actor views instantly at the right using the responsive control deck:
           </p>
           
-          <div className="flex bg-indigo-900/50 border border-indigo-700/60 p-1 rounded-lg">
+          <div className="flex bg-indigo-900/50 border border-indigo-700/60 p-1 rounded-lg items-center">
             <button
               type="button"
               onClick={() => handleRoleChange('freelancer')}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                 currentRole === 'freelancer' 
-                  ? 'bg-white text-indigo-950 shadow' 
+                  ? 'bg-white text-indigo-950 shadow font-bold' 
                   : 'text-indigo-200 hover:text-white'
               }`}
             >
@@ -699,7 +715,7 @@ export default function App() {
               onClick={() => handleRoleChange('client')}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                 currentRole === 'client' 
-                  ? 'bg-white text-indigo-950 shadow' 
+                  ? 'bg-white text-indigo-950 shadow font-bold' 
                   : 'text-indigo-200 hover:text-white'
               }`}
             >
@@ -710,13 +726,30 @@ export default function App() {
               onClick={() => handleRoleChange('admin')}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                 currentRole === 'admin' 
-                  ? 'bg-white text-indigo-950 shadow' 
+                  ? 'bg-white text-indigo-950 shadow font-bold' 
                   : 'text-indigo-200 hover:text-white'
               }`}
             >
               <Award className="w-3 h-3" /> Admin Staff
             </button>
           </div>
+
+          {currentRole === 'freelancer' && (
+            <div className="flex items-center gap-2 bg-indigo-950/60 border border-indigo-700/55 px-3 py-1.5 rounded-lg shrink-0">
+              <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">Act As:</span>
+              <select
+                value={selectedFreelancerId}
+                onChange={(e) => setSelectedFreelancerId(e.target.value)}
+                className="bg-indigo-900 text-white text-xs font-extrabold border-none hover:bg-indigo-850 focus:ring-1 focus:ring-indigo-400 rounded px-2 py-0.5 cursor-pointer max-w-[130px] sm:max-w-none"
+              >
+                {profiles.map(p => (
+                  <option key={p.id} value={p.id} className="text-slate-900 font-medium">
+                    {p.name} {p.isAdmin ? '👑 [Admin]' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1564,6 +1597,8 @@ export default function App() {
             <AdminLockScreen 
               onAuthorize={() => setIsAdminAuthorized(true)}
               savedPasscode={adminPasscode}
+              isProfileAdmin={isProfileAdmin}
+              adminProfileName={activeFreelancerProfile?.name}
             />
           ) : (
             <div className="space-y-6">
@@ -1596,6 +1631,7 @@ export default function App() {
                 onToggleFeatureJob={handleToggleFeatureJob}
                 onDeleteProfile={handleDeleteProfile}
                 onToggleVerifyProfile={handleToggleVerifyProfile}
+                onToggleAdminProfile={handleToggleAdminProfile}
               />
             </div>
           )
