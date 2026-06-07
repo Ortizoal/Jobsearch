@@ -73,3 +73,15 @@ export interface Chat {
   lastMessageText: string;
   lastMessageAt: string;
 }
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  type: 'application' | 'message' | 'system';
+  offline: boolean;
+}
+

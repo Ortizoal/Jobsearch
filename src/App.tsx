@@ -11,7 +11,7 @@ import {
   INITIAL_CHATS, 
   INITIAL_MESSAGES 
 } from './data';
-import { Job, FreelancerProfile, Application, Chat, Message, UserRole } from './types';
+import { Job, FreelancerProfile, Application, Chat, Message, UserRole, AppNotification } from './types';
 import JobCard from './components/JobCard';
 import FreelancerCard from './components/FreelancerCard';
 import ApplicationsList from './components/ApplicationsList';
@@ -41,7 +41,11 @@ import {
   Award,
   Lightbulb,
   Star,
-  Lock
+  Lock,
+  Bell,
+  BellRing,
+  Trash2,
+  X
 } from 'lucide-react';
 
 export default function App() {
@@ -123,6 +127,106 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('fm_notifications');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 'notif-1',
+        userId: 'free-1',
+        title: 'New Freelance Project Offer',
+        message: 'ModernTech Ventures sent you a message proposal: "Are you available to start on Figma to Frontend?" while you were offline.',
+        timestamp: '1 hour ago',
+        read: false,
+        type: 'message',
+        offline: true
+      },
+      {
+        id: 'notif-2',
+        userId: 'free-1',
+        title: 'Application Update (Offline)',
+        message: 'Your application status for "React SaaS Dashboard" has been updated to IN PROCESS while you were offline.',
+        timestamp: '3 hours ago',
+        read: false,
+        type: 'application',
+        offline: true
+      },
+      {
+        id: 'notif-3',
+        userId: 'client-1',
+        title: 'Offline Bid Received',
+        message: 'Alex Rivera submitted an application for "Figma to Frontend" with bid $75/hr while you were offline.',
+        timestamp: '2 hours ago',
+        read: false,
+        type: 'application',
+        offline: true
+      },
+      {
+        id: 'notif-4',
+        userId: 'client-1',
+        title: 'System update',
+        message: 'FlexiWorks verified 2 candidate profiles corresponding to your needed tech skills.',
+        timestamp: 'Yesterday',
+        read: true,
+        type: 'system',
+        offline: true
+      }
+    ];
+  });
+
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('fm_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Helper to trigger simulated offline notifications
+  const triggerSimulatedAlert = (type: 'application' | 'message') => {
+    if (!currentUser) return;
+    
+    let title = '';
+    let message = '';
+    const id = `notif-${Date.now()}`;
+    
+    if (type === 'application') {
+      if (currentRole === 'client') {
+        title = 'Offline Bid Received 📝';
+        message = 'A verified React Freelancer submitted an expedited proposal for your posted design role while you were offline.';
+      } else {
+        title = 'Applied Project Status (Offline) ⚡';
+        message = 'Premium client "ModernTech Ventures" accepted your pitch profile for interview considerations while you were offline!';
+      }
+    } else {
+      title = 'Offline Message Received 💬';
+      message = currentRole === 'client' 
+        ? 'Freelancer "Sarah Connor" replied offline: "Yes, I am available to initiate the project milestones right away."'
+        : 'Client "ModernTech Ventures" reached out offline: "Your portfolio has passed initial vetting, let us arrange a brief setup call!"';
+    }
+
+    const newNotif: AppNotification = {
+      id,
+      userId: currentRole === 'freelancer' ? CURRENT_FREELANCER_ID : CURRENT_CLIENT_ID,
+      title,
+      message,
+      timestamp: 'Just now',
+      read: false,
+      type,
+      offline: true
+    };
+
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const markAllNotificationsAsRead = () => {
+    if (!currentUser) return;
+    const activeUserId = currentRole === 'freelancer' ? CURRENT_FREELANCER_ID : CURRENT_CLIENT_ID;
+    setNotifications(prev => prev.map(n => n.userId === activeUserId ? { ...n, read: true } : n));
+  };
+
+  const deleteNotification = (notifId: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+  };
+
   const handleRegisterAccount = (newUser: { name: string; email: string; role: 'client' | 'freelancer' }) => {
     const generatedId = `user-${newUser.role === 'client' ? 'client' : 'free'}-${Date.now().toString().slice(-4)}`;
     
@@ -135,6 +239,19 @@ export default function App() {
     };
     
     setAccounts(prev => [...prev, newAcc]);
+
+    // Send a welcome alert that was received offline
+    const welcomeNotif: AppNotification = {
+      id: `welcome-${Date.now()}`,
+      userId: generatedId,
+      title: 'Welcome offline alert 🚀',
+      message: `Your specialized profile is active. FlexiWorks compiled matches and synced offline background stats while your account details were loaded.`,
+      timestamp: 'Just now',
+      read: false,
+      type: 'system',
+      offline: true
+    };
+    setNotifications(prev => [welcomeNotif, ...prev]);
 
     if (newUser.role === 'freelancer') {
       const newPrf: FreelancerProfile = {
@@ -788,6 +905,10 @@ export default function App() {
     return !!jobOfClient;
   });
 
+  const activeUserId = currentRole === 'freelancer' ? CURRENT_FREELANCER_ID : CURRENT_CLIENT_ID;
+  const userNotifications = notifications.filter(n => n.userId === activeUserId);
+  const unreadCount = userNotifications.filter(n => !n.read).length;
+
   const templateInvoices = [
     { title: "Brief Intro", text: "Hello! I saw your post and with over 4 years of web practice translating robust mockups to pristine functional elements, I have exactly the skill array needed. I specialize in fast, responsive, and robust code. Let's arrange a brief call!" },
     { title: "Dashboard Spec", text: "Hi team! Dashboard graphs and data streams are my specialized core skill. I have integrated extensive REST APIs with interactive Recharts graphics and smooth layouts, which completely aligns with your vision. I am ready to start immediately." },
@@ -923,121 +1044,240 @@ export default function App() {
             </div>
           </div>
 
-          {/* Dynamic Tabs list based on Active Role */}
-          <nav className="flex items-center gap-1 overflow-x-auto max-w-full w-full md:w-auto pb-1.5 md:pb-0 scrollbar-none snap-x snap-mandatory">
-            {currentRole === 'freelancer' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setFreelancerTab('find_work')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    freelancerTab === 'find_work' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Find Work
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFreelancerTab('tracker')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
-                    freelancerTab === 'tracker' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  My Job Tracker
-                  {freelancerApplications.length > 0 && (
-                    <span className="bg-indigo-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center select-none">
-                      {freelancerApplications.length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFreelancerTab('profile')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    freelancerTab === 'profile' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Edit Profile
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFreelancerTab('messages')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    freelancerTab === 'messages' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Messenger
-                </button>
-              </>
-            )}
+          {/* Dynamic Tabs list + Notifications wrapper */}
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+            <nav className="flex items-center gap-1 overflow-x-auto max-w-full pb-1.5 md:pb-0 scrollbar-none snap-x snap-mandatory">
+              {currentRole === 'freelancer' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFreelancerTab('find_work')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      freelancerTab === 'find_work' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Find Work
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreelancerTab('tracker')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
+                      freelancerTab === 'tracker' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    My Job Tracker
+                    {freelancerApplications.length > 0 && (
+                      <span className="bg-indigo-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center select-none">
+                        {freelancerApplications.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreelancerTab('profile')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      freelancerTab === 'profile' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Edit Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreelancerTab('messages')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      freelancerTab === 'messages' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Messenger
+                  </button>
+                </>
+              )}
 
-            {currentRole === 'client' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setClientTab('my_listings')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    clientTab === 'my_listings' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  My Active Jobs List
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClientTab('post_job')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
-                    clientTab === 'post_job' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  <PlusCircle className="w-3.5 h-3.5 text-indigo-500" /> Post Job Offer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClientTab('browse_talents')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    clientTab === 'browse_talents' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Browse Specialists
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClientTab('messages')}
-                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
-                    clientTab === 'messages' 
-                      ? 'bg-indigo-50 text-indigo-700' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-                >
-                  Messenger
-                </button>
-              </>
-            )}
+              {currentRole === 'client' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setClientTab('my_listings')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      clientTab === 'my_listings' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    My Active Jobs List
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientTab('post_job')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
+                      clientTab === 'post_job' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-indigo-500" /> Post Job Offer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientTab('browse_talents')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      clientTab === 'browse_talents' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Browse Specialists
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientTab('messages')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      clientTab === 'messages' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Messenger
+                  </button>
+                </>
+              )}
 
-            {currentRole === 'admin' && (
+              {currentRole === 'admin' && (
+                <button
+                  type="button"
+                  onClick={() => setAdminTab('console')}
+                  className={`shrink-0 px-4 py-2 rounded-lg font-semibold text-xs bg-indigo-50 text-indigo-700`}
+                >
+                  Moderator Console
+                </button>
+              )}
+            </nav>
+
+            {/* Notification Bell Dropdown Section */}
+            <div className="relative shrink-0 select-none">
               <button
                 type="button"
-                onClick={() => setAdminTab('console')}
-                className={`shrink-0 px-4 py-2 rounded-lg font-semibold text-xs bg-indigo-50 text-indigo-700`}
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className={`relative p-2 rounded-lg border transition-all duration-150 cursor-pointer flex items-center justify-center ${
+                  isNotificationsOpen 
+                    ? 'bg-indigo-55/70 border-indigo-200 text-indigo-700' 
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+                title="Simulated offline notifications"
               >
-                Moderator Console
+                {unreadCount > 0 ? (
+                  <>
+                    <BellRing className="w-4 h-4 text-indigo-600 animate-bounce" />
+                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white rounded-full min-w-[14px] h-3.5 px-1 text-[8px] font-black flex items-center justify-center border border-white leading-none shadow-sm animate-pulse">
+                      {unreadCount}
+                    </span>
+                  </>
+                ) : (
+                  <Bell className="w-4 h-4" />
+                )}
               </button>
-            )}
-          </nav>
+
+              {isNotificationsOpen && (
+                <div className="absolute right-0 mt-3.5 w-80 sm:w-96 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 z-50 text-left animate-fadeIn">
+                  <div className="absolute -top-1.5 right-3 w-3 h-3 bg-white border-t border-l border-slate-200 rotate-45" />
+
+                  {/* Dropdown Header */}
+                  <div className="relative flex justify-between items-center pb-2 border-b border-slate-100 mb-2.5">
+                    <div>
+                      <h3 className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">Background Alerts</h3>
+                      <p className="text-[9px] text-slate-400 font-medium">Synced while you were offline</p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllNotificationsAsRead}
+                        className="text-[9px] font-extrabold text-indigo-600 hover:text-indigo-850 p-1 bg-indigo-50 hover:bg-indigo-100 rounded transition"
+                      >
+                        ✓ Mark Read
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Notification List */}
+                  <div className="relative space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {userNotifications.length === 0 ? (
+                      <div className="py-6 text-center text-slate-400 space-y-1">
+                        <Bell className="w-8 h-8 text-slate-300 mx-auto opacity-70" />
+                        <p className="text-xs font-semibold">Offline inbox is clean</p>
+                        <p className="text-[9px] text-slate-400">Trigger simulated alerts below to test sync activity.</p>
+                      </div>
+                    ) : (
+                      userNotifications.map(notif => (
+                        <div 
+                          key={notif.id}
+                          className={`relative p-2 rounded-xl border text-[11px] transition-all leading-normal flex gap-2 items-start ${
+                            notif.read 
+                              ? 'bg-slate-50/50 border-slate-100 text-slate-500' 
+                              : 'bg-indigo-50/30 border-indigo-100/50 text-slate-800 font-medium'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {notif.type === 'message' && <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />}
+                            {notif.type === 'application' && <Briefcase className="w-3.5 h-3.5 text-emerald-600" />}
+                            {notif.type === 'system' && <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-300" />}
+                          </div>
+                          <div className="flex-1 space-y-0.5">
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="font-extrabold text-slate-800 text-[11px]">{notif.title}</span>
+                              <span className="text-[9px] text-slate-400 whitespace-nowrap">{notif.timestamp}</span>
+                            </div>
+                            <p className="text-slate-650 text-[10px] leading-relaxed">{notif.message}</p>
+                            
+                            {notif.offline && (
+                              <span className="inline-flex items-center gap-0.5 text-[8px] font-bold text-indigo-700 bg-indigo-50/85 px-1 rounded mt-1 border border-indigo-100/35 uppercase tracking-tighter">
+                                💤 offline alert
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => deleteNotification(notif.id)}
+                            className="p-1 hover:bg-slate-100 text-slate-400 hover:text-rose-650 rounded transition shrink-0"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Switch trigger triggers */}
+                  <div className="relative mt-2.5 pt-2 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[8px] font-black uppercase tracking-wider text-slate-400 block pb-0.5">Trigger offline background test triggers</span>
+                    <div className="grid grid-cols-2 gap-1.5 text-[9px]">
+                      <button
+                        type="button"
+                        onClick={() => triggerSimulatedAlert('application')}
+                        className="py-1 px-1.5 text-center border border-indigo-100 hover:border-indigo-300 bg-gradient-to-br from-indigo-50/20 to-indigo-50/60 hover:from-white hover:to-indigo-50 font-bold text-indigo-700 rounded-lg transition active:scale-95 cursor-pointer leading-tight mb-0.5"
+                      >
+                        📬 Applicant proposal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerSimulatedAlert('message')}
+                        className="py-1 px-1.5 text-center border border-indigo-100 hover:border-indigo-300 bg-gradient-to-br from-indigo-50/20 to-indigo-50/60 hover:from-white hover:to-indigo-50 font-bold text-indigo-700 rounded-lg transition active:scale-95 cursor-pointer leading-tight mb-0.5"
+                      >
+                        💬 Inbox Message
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
