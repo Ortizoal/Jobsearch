@@ -24,6 +24,8 @@ interface JobCardProps {
   currentRole: 'freelancer' | 'client' | 'admin';
   hasApplied?: boolean;
   canManage?: boolean;
+  profileSkills?: string[];
+  clientRating?: number;
   onApply?: (job: Job) => void;
   onDelete?: (jobId: string) => void;
   onToggleFeatured?: (jobId: string) => void;
@@ -34,12 +36,18 @@ export default function JobCard({
   currentRole,
   hasApplied = false,
   canManage = false,
+  profileSkills,
+  clientRating,
   onApply,
   onDelete,
   onToggleFeatured
 }: JobCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const matchingSkillsCount = profileSkills 
+    ? job.skills.filter(js => profileSkills.some(ps => ps.toLowerCase() === js.toLowerCase())).length 
+    : 0;
 
   const formatBudget = (amount: number, type: 'Fixed' | 'Hourly') => {
     if (type === 'Fixed') {
@@ -81,7 +89,15 @@ export default function JobCard({
           />
           <div className="flex-grow min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="text-sm font-medium text-slate-500 truncate">{job.clientName}</span>
+              <span className="text-sm font-medium text-slate-500 truncate flex items-center gap-1.5">
+                {job.clientName}
+                {typeof clientRating === 'number' && clientRating > 0 && (
+                  <span className="inline-flex items-center text-amber-500 text-xs font-bold gap-0.5" title="Average Employer Rating">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 flex-shrink-0" />
+                    {clientRating}
+                  </span>
+                )}
+              </span>
               <span className="text-slate-300">•</span>
               <span className="text-xs text-slate-400">
                 {new Date(job.createdAt).toLocaleDateString(undefined, { 
@@ -134,22 +150,48 @@ export default function JobCard({
 
         {/* Skills Tag Cloud */}
         <div className="flex flex-wrap gap-1.5 mt-4">
-          {job.skills.map((skill) => (
-            <span 
-              key={skill}
-              className="px-2.5 py-0.5 bg-slate-50 border border-slate-100 text-slate-600 text-xs rounded-full flex items-center gap-1 font-medium"
-            >
-              <Tag className="w-3 h-3 text-slate-400" />
-              {skill}
-            </span>
-          ))}
+          {job.skills.map((skill) => {
+            const hasMatch = profileSkills?.some(ps => ps.toLowerCase() === skill.toLowerCase());
+            return (
+              <span 
+                key={skill}
+                className={`px-2.5 py-0.5 text-xs rounded-full flex items-center gap-1 font-semibold border transition-all duration-200 ${
+                  hasMatch 
+                    ? 'bg-emerald-50 border-emerald-250 text-emerald-800 scale-102 shadow-xs' 
+                    : 'bg-slate-50 border-slate-100 text-slate-600'
+                }`}
+              >
+                <Tag className={`w-3 h-3 ${hasMatch ? 'text-emerald-500' : 'text-slate-400'}`} />
+                {skill}
+                {hasMatch && (
+                  <span className="text-[9px] bg-emerald-500 text-white rounded-full px-1.5 py-0.2 uppercase tracking-tight scale-90">
+                    Match
+                  </span>
+                )}
+              </span>
+            );
+          })}
         </div>
 
         {/* Actions Row */}
-        <div className="flex items-center justify-between border-t border-slate-50 mt-5 pt-4 gap-4">
-          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded">
-            Category: <strong className="text-slate-700">{job.category}</strong>
-          </span>
+        <div className="flex flex-wrap items-center justify-between border-t border-slate-50 mt-5 pt-4 gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1 rounded border border-slate-100">
+              Category: <strong className="text-slate-700">{job.category}</strong>
+            </span>
+
+            {profileSkills && job.skills.length > 0 && (
+              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded border font-semibold ${
+                matchingSkillsCount === job.skills.length 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : matchingSkillsCount > 0 
+                    ? 'bg-amber-50 text-amber-700 border-amber-100'
+                    : 'bg-slate-50 text-slate-405 border-slate-100'
+              }`}>
+                Skills Match: <strong>{matchingSkillsCount}/{job.skills.length}</strong>
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button

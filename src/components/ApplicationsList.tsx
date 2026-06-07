@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Application, Job, FreelancerProfile } from '../types';
 import { 
   CheckCircle, 
@@ -18,8 +18,71 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  Star
 } from 'lucide-react';
+
+interface RatingFormProps {
+  label: string;
+  placeholder?: string;
+  onSubmit: (rating: number, review: string) => void;
+}
+
+function RatingForm({ label, onSubmit, placeholder = 'Describe your experience...' }: RatingFormProps) {
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
+  const [review, setReview] = useState('');
+
+  return (
+    <div className="bg-slate-50/75 p-3.5 sm:p-4 rounded-lg border border-slate-100 flex flex-col gap-2.5 text-left transition-all duration-200 shadow-xs">
+      <h5 className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">{label}</h5>
+      
+      {/* 5 Star Picker */}
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((starValue) => {
+          const isGold = (hoverRating !== null ? starValue <= hoverRating : starValue <= rating);
+          return (
+            <button
+              key={starValue}
+              type="button"
+              onClick={() => setRating(starValue)}
+              onMouseEnter={() => setHoverRating(starValue)}
+              onMouseLeave={() => setHoverRating(null)}
+              className="p-0.5 hover:scale-115 transition duration-150 text-slate-200"
+            >
+              <Star 
+                className={`w-5 h-5 ${isGold ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} 
+              />
+            </button>
+          );
+        })}
+        <span className="text-[11px] sm:text-xs font-bold text-slate-400 ml-2">
+          {rating === 5 ? 'Excellent (5.0)' : rating === 4 ? 'Very Good (4.0)' : rating === 3 ? 'Good (3.0)' : rating === 2 ? 'Fair (2.0)' : 'Poor (1.0)'}
+        </span>
+      </div>
+
+      <div>
+        <textarea
+          value={review}
+          onChange={(e) => setReview(e.target.value)}
+          placeholder={placeholder}
+          rows={2}
+          className="w-full text-xs sm:text-sm p-2 bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 placeholder-slate-400"
+        />
+      </div>
+
+      <div className="text-right">
+        <button
+          type="button"
+          onClick={() => onSubmit(rating, review.trim())}
+          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] sm:text-xs font-semibold shadow-xs transition"
+        >
+          Submit Feedback
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface ApplicationsListProps {
   applications: Application[];
@@ -29,6 +92,7 @@ interface ApplicationsListProps {
   onUpdateStatus?: (applicationId: string, newStatus: Application['status']) => void;
   onContactFreelancer?: (freelancerId: string, jobId: string) => void;
   onDeleteApplication?: (applicationId: string) => void;
+  onRateContract?: (applicationId: string, ratingType: 'client' | 'freelancer', rating: number, review: string) => void;
 }
 
 export default function ApplicationsList({
@@ -38,7 +102,8 @@ export default function ApplicationsList({
   currentRole,
   onUpdateStatus,
   onContactFreelancer,
-  onDeleteApplication
+  onDeleteApplication,
+  onRateContract
 }: ApplicationsListProps) {
 
   const getJobDetail = (jobId: string) => jobs.find(j => j.id === jobId);
@@ -70,6 +135,8 @@ export default function ApplicationsList({
         return <span className={defaultStyles + 'bg-amber-50 border-amber-100 text-amber-700'}>Offer Sent</span>;
       case 'hired':
         return <span className={defaultStyles + 'bg-emerald-50 border-emerald-100 text-emerald-700'}><CheckCircle className="w-3 h-3 text-emerald-600" /> Contract Active</span>;
+      case 'completed':
+        return <span className={defaultStyles + 'bg-purple-50 border-purple-100 text-purple-700'}><CheckCircle className="w-3 h-3 text-purple-600" /> Contract Completed</span>;
       case 'declined':
         return <span className={defaultStyles + 'bg-slate-100 border-slate-200 text-slate-600'}><XCircle className="w-3 h-3 text-slate-500" /> Declined</span>;
       default:
@@ -226,8 +293,23 @@ export default function ApplicationsList({
                       )}
 
                       {app.status === 'hired' && (
-                        <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded inline-flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> Project is running!
+                        <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                          <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2.5 py-1.5 rounded inline-flex items-center gap-1 border border-emerald-100">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Active Contract
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onUpdateStatus(app.id, 'completed')}
+                            className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                          >
+                            Complete & Rate Specialist
+                          </button>
+                        </div>
+                      )}
+
+                      {app.status === 'completed' && (
+                        <span className="text-xs text-purple-700 font-semibold bg-purple-50 border border-purple-150 px-2.5 py-1.5 rounded inline-flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 text-purple-650" /> Contract Completed
                         </span>
                       )}
 
@@ -240,20 +322,116 @@ export default function ApplicationsList({
                   </div>
                 )}
 
-                {/* Freelancer withdraw application */}
-                {currentRole === 'freelancer' && onDeleteApplication && app.status !== 'hired' && (
+                {/* Freelancer withdraw application / complete contract actions */}
+                {currentRole === 'freelancer' && (
                   <div className="mt-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onDeleteApplication(app.id)}
-                      className="text-xs text-rose-600 hover:text-rose-800 font-medium transition"
-                    >
-                      Withdraw Proposal
-                    </button>
+                    {app.status === 'hired' && (
+                      <div className="flex flex-wrap gap-2 items-center justify-end">
+                        <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2.5 py-1.5 rounded border border-emerald-100 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" /> Contract Active
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onUpdateStatus?.(app.id, 'completed')}
+                          className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                        >
+                          Complete Contract & Rate Client
+                        </button>
+                      </div>
+                    )}
+
+                    {onDeleteApplication && app.status !== 'hired' && app.status !== 'completed' && app.status !== 'declined' && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteApplication(app.id)}
+                        className="text-xs text-rose-600 hover:text-rose-800 font-medium transition"
+                      >
+                        Withdraw Proposal
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Direct Star rating feedback section for Completed Contracts */}
+            {app.status === 'completed' && (
+              <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-5 pointer-events-auto">
+                {/* CLIENT FEEDBACK BLOCK */}
+                <div className="space-y-2 text-left">
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    👑 Client's Review for Freelancer
+                  </h4>
+                  {app.clientRating ? (
+                    <div className="bg-slate-50/70 p-3 sm:p-4 rounded-lg border border-slate-100 flex flex-col gap-1 text-left">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star 
+                            key={s} 
+                            className={`w-3.5 h-3.5 ${s <= app.clientRating! ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} 
+                          />
+                        ))}
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-700 ml-1.5">{app.clientRating}.0 / 5.0</span>
+                      </div>
+                      {app.clientReview ? (
+                        <p className="text-xs sm:text-sm text-slate-600 italic mt-1">"{app.clientReview}"</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No written comments left.</p>
+                      )}
+                    </div>
+                  ) : (
+                    currentRole === 'client' || currentRole === 'admin' ? (
+                      <RatingForm 
+                        label="Rate Freelancer's Contribution"
+                        placeholder="How was the freelancer's communication, speed, and deliverables quality?"
+                        onSubmit={(rating, review) => onRateContract?.(app.id, 'client', rating, review)}
+                      />
+                    ) : (
+                      <div className="bg-slate-50/50 p-4 rounded-lg border border-dashed border-slate-200 text-center py-5">
+                        <span className="text-xs text-slate-400 italic font-medium">Pending feedback from the client</span>
+                      </div>
+                    )
+                  )}
+                </div>
+
+                {/* FREELANCER FEEDBACK BLOCK */}
+                <div className="space-y-2 text-left">
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    💼 Freelancer's Review for Client
+                  </h4>
+                  {app.freelancerRating ? (
+                    <div className="bg-slate-50/70 p-3 sm:p-4 rounded-lg border border-slate-100 flex flex-col gap-1 text-left">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star 
+                            key={s} 
+                            className={`w-3.5 h-3.5 ${s <= app.freelancerRating! ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} 
+                          />
+                        ))}
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-700 ml-1.5">{app.freelancerRating}.0 / 5.0</span>
+                      </div>
+                      {app.freelancerReview ? (
+                        <p className="text-xs sm:text-sm text-slate-600 italic mt-1">"{app.freelancerReview}"</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No written comments left.</p>
+                      )}
+                    </div>
+                  ) : (
+                    currentRole === 'freelancer' || currentRole === 'admin' ? (
+                      <RatingForm 
+                        label="Rate Employer Experience"
+                        placeholder="How clear were directions, response rates, and milestones handling?"
+                        onSubmit={(rating, review) => onRateContract?.(app.id, 'freelancer', rating, review)}
+                      />
+                    ) : (
+                      <div className="bg-slate-50/50 p-4 rounded-lg border border-dashed border-slate-200 text-center py-5">
+                        <span className="text-xs text-slate-400 italic font-medium">Pending feedback from the freelancer</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Interactive communication shortcuts */}
             <div className="border-t border-slate-50 mt-2 pt-3 flex items-center justify-between">

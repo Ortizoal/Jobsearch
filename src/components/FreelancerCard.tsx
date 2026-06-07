@@ -23,6 +23,7 @@ interface FreelancerCardProps {
   key?: string | number;
   profile: FreelancerProfile;
   currentRole: 'freelancer' | 'client' | 'admin';
+  highlightSkills?: string[];
   onContact?: (profile: FreelancerProfile) => void;
   onToggleVerify?: (id: string) => void;
   onDeleteProfile?: (id: string) => void;
@@ -31,6 +32,7 @@ interface FreelancerCardProps {
 export default function FreelancerCard({
   profile,
   currentRole,
+  highlightSkills = [],
   onContact,
   onToggleVerify,
   onDeleteProfile
@@ -111,14 +113,24 @@ export default function FreelancerCard({
       </div>
 
       <div className="flex flex-wrap gap-1 mb-4">
-        {profile.skills.map(skill => (
-          <span 
-            key={skill}
-            className="px-2.5 py-0.5 bg-slate-50 text-slate-600 text-xs rounded border border-slate-100 font-medium"
-          >
-            {skill}
-          </span>
-        ))}
+        {profile.skills.map(skill => {
+          const isHighlighted = highlightSkills.some(
+            hs => hs.toLowerCase() === skill.toLowerCase()
+          );
+          return (
+            <span 
+              key={skill}
+              className={`px-2.5 py-0.5 text-xs rounded border font-semibold flex items-center gap-1 transition ${
+                isHighlighted 
+                  ? 'bg-indigo-50 border-indigo-250 text-indigo-805 scale-102 shadow-xs' 
+                  : 'bg-slate-50 text-slate-600 border-slate-100 font-medium'
+              }`}
+            >
+              {isHighlighted && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />}
+              {skill}
+            </span>
+          );
+        })}
       </div>
 
       {/* Action panel footer */}

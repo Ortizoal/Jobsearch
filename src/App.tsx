@@ -17,6 +17,7 @@ import FreelancerCard from './components/FreelancerCard';
 import ApplicationsList from './components/ApplicationsList';
 import Messenger from './components/Messenger';
 import AdminPanel from './components/AdminPanel';
+import SkillSelector from './components/SkillSelector';
 import { 
   Briefcase, 
   Users, 
@@ -92,7 +93,7 @@ export default function App() {
   const [newJobBudget, setNewJobBudget] = useState<number>(1000);
   const [newJobDuration, setNewJobDuration] = useState('1 - 3 months');
   const [newJobDesc, setNewJobDesc] = useState('');
-  const [newJobSkills, setNewJobSkills] = useState('');
+  const [newJobSkills, setNewJobSkills] = useState<string[]>([]);
   const [postSuccess, setPostSuccess] = useState(false);
 
   // Form State for Freelancer Profile Edit
@@ -100,9 +101,16 @@ export default function App() {
   const [profileTitle, setProfileTitle] = useState('Lead Front-End Engineer & UI Specialist');
   const [profileBio, setProfileBio] = useState('Passionate frontend specialist with over 5 years of industry experience...');
   const [profileHourlyRate, setProfileHourlyRate] = useState(75);
-  const [profileSkillsText, setProfileSkillsText] = useState('React, Tailwind CSS, TypeScript, Vite, Figma');
+  const [profileSkills, setProfileSkills] = useState<string[]>(['React', 'Tailwind CSS', 'TypeScript', 'Vite', 'Figma']);
   const [profileEmail, setProfileEmail] = useState('sarah.connor@dev.io');
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  // Search & Filter state for Browse Specialists (Client role)
+  const [talentSearchQuery, setTalentSearchQuery] = useState('');
+  const [talentSelectedSkills, setTalentSelectedSkills] = useState<string[]>([]);
+
+  // Skill Match filtering toggle for Finding Work (Freelancer role)
+  const [matchMySkills, setMatchMySkills] = useState(false);
 
   // Initialize and load default freelancer profile settings based on free-1
   useEffect(() => {
@@ -112,7 +120,7 @@ export default function App() {
       setProfileTitle(sarahPrf.title);
       setProfileBio(sarahPrf.bio);
       setProfileHourlyRate(sarahPrf.hourlyRate);
-      setProfileSkillsText(sarahPrf.skills.join(', '));
+      setProfileSkills(sarahPrf.skills || []);
       setProfileEmail(sarahPrf.email);
     }
   }, [profiles]);
@@ -181,7 +189,7 @@ export default function App() {
       budget: Number(newJobBudget) || 500,
       type: newJobType,
       description: newJobDesc.trim(),
-      skills: newJobSkills.split(',').map(s => s.trim()).filter(Boolean),
+      skills: newJobSkills,
       duration: newJobDuration,
       createdAt: new Date().toISOString(),
       isFeatured: false
@@ -193,7 +201,7 @@ export default function App() {
     // Clear Form
     setNewJobTitle('');
     setNewJobDesc('');
-    setNewJobSkills('');
+    setNewJobSkills([]);
     setNewJobBudget(1000);
 
     setTimeout(() => {
@@ -228,7 +236,7 @@ export default function App() {
           bio: profileBio,
           hourlyRate: profileHourlyRate,
           email: profileEmail,
-          skills: profileSkillsText.split(',').map(s => s.trim()).filter(Boolean)
+          skills: profileSkills
         };
       }
       return p;
@@ -362,6 +370,7 @@ export default function App() {
           interviewing: `Hello ${freelancer.name}! We love your application and would like to invite you to an Interview. What is your availability next week?`,
           offered: `Incredible news, ${freelancer.name}! We would like to formally extend a project work offering at $${app.bidAmount}. Let us know if you accept!`,
           hired: `Contract Active! The billing milestone is started for "${job.title}". Welcome to the team!`,
+          completed: `The contract for "${job.title}" has been successfully completed! Thank you for the collaboration. Both parties can now leave ratings and written feedback directly on the active application proposal.`,
           declined: `Thank you for your proposal, but we have chosen to go with another applicant for this specific gig. We wish you clean compiles in the future.`
         };
 
@@ -384,6 +393,102 @@ export default function App() {
             lastMessageAt: new Date().toISOString()
           } : c
         ));
+      }
+    }
+  };
+
+  const getClientRating = (clientName: string) => {
+    const clientJobs = jobs.filter(j => j.clientName === clientName);
+    const clientJobIds = clientJobs.map(j => j.id);
+    const clientCompletedApps = applications.filter(
+      app => clientJobIds.includes(app.jobId) && app.status === 'completed'
+    );
+    const ratings = clientCompletedApps
+      .map(app => app.freelancerRating)
+      .filter((r): r is number => typeof r === 'number' && r > 0);
+    
+    if (ratings.length === 0) return 4.8; // default baseline rating for testing
+    const avg = ratings.reduce((sum, val) => sum + val, 0) / ratings.length;
+    return Number(avg.toFixed(1));
+  };
+
+  const handleRateContract = (appId: string, ratingType: 'client' | 'freelancer', rating: number, review: string) => {
+    setApplications(prev => prev.map(app => {
+      if (app.id !== appId) return app;
+      const updated = { ...app };
+      if (ratingType === 'client') {
+        updated.clientRating = rating;
+        updated.clientReview = review;
+      } else {
+        updated.freelancerRating = rating;
+        updated.freelancerReview = review;
+      }
+      return updated;
+    }));
+
+    if (ratingType === 'client') {
+      const app = applications.find(a => a.id === appId);
+      if (app) {
+        setProfiles(prev => prev.map(p => {
+          if (p.id === app.freelancerId) {
+            const otherCompletedApps = applications.filter(
+              a => a.id !== appId && a.freelancerId === p.id && a.status === 'completed'
+            );
+            const allClientRatings = otherCompletedApps
+              .map(a => a.clientRating)
+              .filter((r): r is number => typeof r === 'number' && r > 0);
+            
+            allClientRatings.push(rating);
+            
+            const originProf = INITIAL_PROFILES.find(op => op.id === p.id) || p;
+            const baselineCompleted = originProf.completedJobs || 0;
+            const baselineRating = originProf.rating || 5.0;
+            const baselineSum = baselineCompleted * baselineRating;
+            
+            const addedSum = allClientRatings.reduce((sum, v) => sum + v, 0);
+            const totalCount = baselineCompleted + allClientRatings.length;
+            const newAvg = Number(((baselineSum + addedSum) / totalCount).toFixed(1));
+            
+            return {
+              ...p,
+              rating: newAvg,
+              completedJobs: totalCount
+            };
+          }
+          return p;
+        }));
+      }
+    }
+
+    const app = applications.find(a => a.id === appId);
+    if (app) {
+      const job = jobs.find(j => j.id === app.jobId);
+      if (job) {
+        const ratingSender = ratingType === 'client' ? job.clientName : app.freelancerId;
+        const ratingSenderName = ratingType === 'client' ? job.clientName : (profiles.find(p => p.id === app.freelancerId)?.name || 'Freelancer');
+        const ratedName = ratingType === 'client' ? 'freelancer' : 'employer';
+        
+        let targetChatId = chats.find(c => c.jobId === job.id && c.freelancerId === app.freelancerId)?.id;
+        
+        if (targetChatId) {
+          const newMsg: Message = {
+            id: `msg-${Date.now()}`,
+            chatId: targetChatId,
+            senderId: ratingSender,
+            senderName: ratingSenderName,
+            text: `⭐ Review Posted! Left a ${rating}/5 star score for the ${ratedName}. "${review || 'No written comment'}"`,
+            createdAt: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, newMsg]);
+          setChats(prev => prev.map(c => 
+            c.id === targetChatId ? {
+              ...c,
+              lastMessageText: `⭐ Review Posted: ${rating}/5`,
+              lastMessageAt: new Date().toISOString()
+            } : c
+          ));
+        }
       }
     }
   };
@@ -517,7 +622,19 @@ export default function App() {
     const matchesCategory = selectedCategory === 'All' || job.category === selectedCategory;
     const matchesBudget = job.budget >= budgetFilter;
     const matchesFeatured = !onlyFeatured || job.isFeatured;
-    return matchesSearch && matchesCategory && matchesBudget && matchesFeatured;
+    const matchesProfileSkills = !matchMySkills || job.skills.some(js => 
+      profileSkills.some(ps => ps.toLowerCase() === js.toLowerCase())
+    );
+    return matchesSearch && matchesCategory && matchesBudget && matchesFeatured && matchesProfileSkills;
+  }).sort((a, b) => {
+    // Highly match overlapping skills first
+    const aMatchCount = a.skills.filter(js => profileSkills.some(ps => ps.toLowerCase() === js.toLowerCase())).length;
+    const bMatchCount = b.skills.filter(js => profileSkills.some(ps => ps.toLowerCase() === js.toLowerCase())).length;
+    // Featured first, then highest overlap
+    if (a.isFeatured !== b.isFeatured) {
+      return a.isFeatured ? -1 : 1;
+    }
+    return bMatchCount - aMatchCount;
   });
 
   const freelancerApplications = applications.filter(app => app.freelancerId === CURRENT_FREELANCER_ID);
@@ -750,7 +867,7 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
                     
                     {/* Plain Text search */}
-                    <div className="md:col-span-4 relative">
+                    <div className="md:col-span-3 relative">
                       <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input 
                         type="text" 
@@ -762,8 +879,8 @@ export default function App() {
                     </div>
 
                     {/* Category Selection Filter */}
-                    <div className="md:col-span-3">
-                      <select 
+                    <div className="md:col-span-2">
+                       <select 
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
                         className="w-full border border-slate-200 rounded-lg py-2 px-3 text-xs md:text-sm bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-700 font-medium"
@@ -803,6 +920,20 @@ export default function App() {
                         Only Featured
                       </label>
                     </div>
+
+                    {/* Fit My Profile Skills toggle helper */}
+                    <div className="md:col-span-2 flex items-center gap-2 border-l border-slate-100 pl-2">
+                      <input 
+                        type="checkbox"
+                        id="matchSkillsToggle"
+                        checked={matchMySkills}
+                        onChange={(e) => setMatchMySkills(e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 border-slate-200 rounded cursor-pointer"
+                      />
+                      <label htmlFor="matchSkillsToggle" className="text-xs text-slate-700 font-bold cursor-pointer select-none flex items-center gap-1" title="Only show jobs matching your profile's skills">
+                        🎯 Fit My Skills
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -812,7 +943,7 @@ export default function App() {
                     <AlertCircle className="w-10 h-10 text-slate-350 mx-auto mb-2 opacity-60" />
                     <h3 className="text-base font-bold text-slate-800">No Job Listings Match</h3>
                     <p className="text-slate-500 text-xs mt-1">
-                      Adjust your category tags, decrease the minimum rate constraint, or search a different phrase.
+                      Adjust your category tags, deselect "Fit My Skills", decrease the minimum rate constraint, or search a different phrase.
                     </p>
                   </div>
                 ) : (
@@ -827,6 +958,8 @@ export default function App() {
                           job={job}
                           currentRole="freelancer"
                           hasApplied={hasApplied}
+                          profileSkills={profileSkills}
+                          clientRating={getClientRating(job.clientName)}
                           onApply={triggerApplyModal}
                         />
                       );
@@ -851,7 +984,9 @@ export default function App() {
                   jobs={jobs}
                   freelancers={profiles}
                   currentRole="freelancer"
+                  onUpdateStatus={handleUpdateApplicationStatus}
                   onDeleteApplication={(id) => setApplications(prev => prev.filter(app => app.id !== id))}
+                  onRateContract={handleRateContract}
                 />
               </div>
             )}
@@ -930,14 +1065,11 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">List of Skills * (Comma separated)</label>
-                    <input 
-                      type="text" 
-                      value={profileSkillsText}
-                      onChange={(e) => setProfileSkillsText(e.target.value)}
-                      required
-                      placeholder="e.g. React, Tailwind, Next.js, Redux"
-                      className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                    <SkillSelector
+                      selectedSkills={profileSkills}
+                      onChange={setProfileSkills}
+                      label="Your Skills Tag Portfolio *"
+                      placeholder="Search, add, or customize your list of skills..."
                     />
                   </div>
 
@@ -1024,6 +1156,7 @@ export default function App() {
                             job={job}
                             currentRole="client"
                             canManage={true}
+                            clientRating={getClientRating(job.clientName)}
                             onDelete={handleDeleteJob}
                           />
                         ))}
@@ -1045,6 +1178,7 @@ export default function App() {
                         currentRole="client"
                         onUpdateStatus={handleUpdateApplicationStatus}
                         onContactFreelancer={handleContactFreelancer}
+                        onRateContract={handleRateContract}
                       />
                     </div>
 
@@ -1156,13 +1290,11 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Required Skills (Comma separated)</label>
-                    <input 
-                      type="text" 
-                      value={newJobSkills}
-                      onChange={(e) => setNewJobSkills(e.target.value)}
-                      placeholder="e.g. Node.js, REST API, JWT, Jest"
-                      className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                    <SkillSelector
+                      selectedSkills={newJobSkills}
+                      onChange={setNewJobSkills}
+                      label="Required Gig Skills *"
+                      placeholder="Type or select required skills for this job..."
                     />
                   </div>
 
@@ -1191,27 +1323,111 @@ export default function App() {
             )}
 
             {/* BROWSE ALL TALENTS */}
-            {clientTab === 'browse_talents' && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Browse Available Specialists</h2>
-                  <p className="text-xs text-slate-505">
-                    Consult professional profiles, experiences and initiate direct chat terms.
-                  </p>
-                </div>
+            {clientTab === 'browse_talents' && (() => {
+              const filteredFreelancers = profiles.filter(profile => {
+                const matchesText = profile.name.toLowerCase().includes(talentSearchQuery.toLowerCase()) ||
+                                    profile.title.toLowerCase().includes(talentSearchQuery.toLowerCase()) ||
+                                    profile.bio.toLowerCase().includes(talentSearchQuery.toLowerCase());
+                
+                if (talentSelectedSkills.length === 0) {
+                  return matchesText;
+                }
+                
+                // Matches at least one selected skill tag
+                const hasOverlap = profile.skills.some(pSkill => 
+                  talentSelectedSkills.some(tSkill => tSkill.toLowerCase() === pSkill.toLowerCase())
+                );
+                return matchesText && hasOverlap;
+              }).sort((a, b) => {
+                // Keep highest overlap count first
+                if (talentSelectedSkills.length === 0) return 0;
+                const aOverlap = a.skills.filter(ps => talentSelectedSkills.some(ts => ts.toLowerCase() === ps.toLowerCase())).length;
+                const bOverlap = b.skills.filter(ps => talentSelectedSkills.some(ts => ts.toLowerCase() === ps.toLowerCase())).length;
+                return bOverlap - aOverlap;
+              });
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {profiles.map(profile => (
-                    <FreelancerCard 
-                      key={profile.id}
-                      profile={profile}
-                      currentRole="client"
-                      onContact={handleContactGeneral}
-                    />
-                  ))}
+              return (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900">Browse Available Specialists</h2>
+                      <p className="text-xs text-slate-500">
+                        Consult professional profiles, experiences, filter by required tags and initiate direct communication.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Filter and Search Bar Control Group for Talents */}
+                  <div className="bg-white rounded-xl border border-slate-100 p-5 shadow-sm space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Search Box */}
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block mb-1">
+                          Search by Name or Keywords
+                        </label>
+                        <div className="relative">
+                          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input 
+                            type="text" 
+                            value={talentSearchQuery}
+                            onChange={(e) => setTalentSearchQuery(e.target.value)}
+                            placeholder="Type freelancer name, professional title, bio details..."
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs md:text-sm bg-slate-50/50 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white placeholder-slate-401 text-slate-800 font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Skill selector */}
+                      <div>
+                        <SkillSelector
+                          selectedSkills={talentSelectedSkills}
+                          onChange={setTalentSelectedSkills}
+                          label="Filter Specialists by Core Skills"
+                          placeholder="Search or add tools to filter profiles..."
+                        />
+                      </div>
+                    </div>
+
+                    {talentSelectedSkills.length > 0 && (
+                      <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-50">
+                        <span className="flex items-center gap-1.5">
+                          💡 Sorted by <strong className="text-indigo-650 font-bold">highest skill overlap</strong> matching your filters.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setTalentSelectedSkills([])}
+                          className="hover:text-indigo-805 text-indigo-600 font-bold tracking-wide transition"
+                        >
+                          Clear Skill Filters
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {filteredFreelancers.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-100 p-12 text-center max-w-md mx-auto">
+                      <AlertCircle className="w-10 h-10 text-slate-350 mx-auto mb-2 opacity-60" />
+                      <h3 className="text-base font-bold text-slate-800">No Specialists Match</h3>
+                      <p className="text-slate-500 text-xs mt-1">
+                        Try modifying your keyword search query, clearing some filter tags, or browsing our full list of experts.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {filteredFreelancers.map(profile => (
+                        <FreelancerCard 
+                          key={profile.id}
+                          profile={profile}
+                          currentRole="client"
+                          highlightSkills={talentSelectedSkills}
+                          onContact={handleContactGeneral}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* MESSAGING LAB */}
             {clientTab === 'messages' && (

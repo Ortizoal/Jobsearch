@@ -41,8 +41,13 @@ export interface Application {
   freelancerId: string;
   coverLetter: string;
   bidAmount: number;
-  status: 'applied' | 'interviewing' | 'offered' | 'hired' | 'declined';
+  status: 'applied' | 'interviewing' | 'offered' | 'hired' | 'declined' | 'completed';
   createdAt: string;
+  clientRating?: number;
+  clientReview?: string;
+  freelancerRating?: number;
+  freelancerReview?: string;
+  completedAt?: string;
 }
 
 export interface Message {
