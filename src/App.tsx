@@ -231,7 +231,7 @@ export default function App() {
     setNotifications(prev => prev.filter(n => n.id !== notifId));
   };
 
-  const handleRegisterAccount = (newUser: { name: string; email: string; role: 'client' | 'freelancer' }) => {
+  const handleRegisterAccount = (newUser: { name: string; email: string; role: 'client' | 'freelancer'; passwordHash: string }) => {
     const generatedId = `user-${newUser.role === 'client' ? 'client' : 'free'}-${Date.now().toString().slice(-4)}`;
     
     const newAcc: UserAccount = {
@@ -239,7 +239,7 @@ export default function App() {
       email: newUser.email,
       name: newUser.name,
       role: newUser.role,
-      passwordHash: 'password', // Default fallback so they can sign in again
+      passwordHash: newUser.passwordHash || 'password',
       avatar: newUser.role === 'client' ? 'gradient:from-emerald-400 to-teal-600' : 'gradient:from-indigo-500 to-purple-600',
     };
     
@@ -276,11 +276,27 @@ export default function App() {
       setProfiles(prev => [...prev, newPrf]);
       setSelectedFreelancerId(generatedId);
     }
+
+    return newAcc;
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setIsAdminAuthorized(false);
+  };
+
+  const handleResetDatabase = () => {
+    localStorage.removeItem('fm_accounts');
+    localStorage.removeItem('fm_profiles');
+    localStorage.removeItem('fm_jobs');
+    localStorage.removeItem('fm_applications');
+    localStorage.removeItem('fm_chats');
+    localStorage.removeItem('fm_messages');
+    localStorage.removeItem('fm_notifications');
+    localStorage.removeItem('fm_current_user');
+    localStorage.removeItem('fm_admin_passcode');
+    localStorage.removeItem('fm_selected_freelancer_id');
+    window.location.reload();
   };
 
   // Administrative Credentials Safety and Authorization
@@ -2250,6 +2266,11 @@ export default function App() {
                 onDeleteProfile={handleDeleteProfile}
                 onToggleVerifyProfile={handleToggleVerifyProfile}
                 onToggleAdminProfile={handleToggleAdminProfile}
+                accounts={accounts}
+                chats={chats}
+                allMessages={messages}
+                notifications={notifications}
+                onResetDatabase={handleResetDatabase}
               />
             </div>
           )

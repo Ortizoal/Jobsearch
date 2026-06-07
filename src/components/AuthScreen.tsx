@@ -10,7 +10,7 @@ import { FreelancerProfile } from '../types';
 interface AuthScreenProps {
   onLoginSuccess: (user: { id: string; name: string; email: string; role: 'client' | 'freelancer' | 'admin' }) => void;
   existingAccounts: Array<{ id: string; name: string; email: string; role: 'client' | 'freelancer' | 'admin'; passwordHash: string }>;
-  onRegisterAccount: (newUser: { name: string; email: string; role: 'client' | 'freelancer' }) => void;
+  onRegisterAccount: (newUser: { name: string; email: string; role: 'client' | 'freelancer'; passwordHash: string }) => { id: string; name: string; email: string; role: 'client' | 'freelancer' | 'admin'; passwordHash: string };
   profiles: FreelancerProfile[];
 }
 
@@ -34,18 +34,28 @@ export default function AuthScreen({ onLoginSuccess, existingAccounts, onRegiste
   const [errorText, setErrorText] = useState<string | null>(null);
   const [successText, setSuccessText] = useState<string | null>(null);
 
+  const isEmailValid = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorText(null);
     setSuccessText(null);
 
-    if (!loginEmail.trim() || !loginPassword.trim()) {
+    const emailInput = loginEmail.trim();
+    if (!emailInput || !loginPassword.trim()) {
       setErrorText('Please fill in both your email address and password.');
       return;
     }
 
+    if (!isEmailValid(emailInput)) {
+      setErrorText('Please enter a valid structure email address (e.g. yourname@example.com).');
+      return;
+    }
+
     const matched = existingAccounts.find(
-      (acc) => acc.email.toLowerCase() === loginEmail.trim().toLowerCase()
+      (acc) => acc.email.toLowerCase() === emailInput.toLowerCase()
     );
 
     if (!matched || matched.passwordHash !== loginPassword) {
@@ -64,8 +74,14 @@ export default function AuthScreen({ onLoginSuccess, existingAccounts, onRegiste
     setErrorText(null);
     setSuccessText(null);
 
-    if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
+    const emailInput = regEmail.trim();
+    if (!regName.trim() || !emailInput || !regPassword.trim()) {
       setErrorText('All fields are mandatory. Please enter your name, email, and security password.');
+      return;
+    }
+
+    if (!isEmailValid(emailInput)) {
+      setErrorText('Please enter a valid format email address (e.g. yourname@example.com) to register.');
       return;
     }
 
@@ -75,7 +91,7 @@ export default function AuthScreen({ onLoginSuccess, existingAccounts, onRegiste
     }
 
     const emailInUse = existingAccounts.some(
-      (acc) => acc.email.toLowerCase() === regEmail.trim().toLowerCase()
+      (acc) => acc.email.toLowerCase() === emailInput.toLowerCase()
     );
 
     if (emailInUse) {
@@ -84,24 +100,18 @@ export default function AuthScreen({ onLoginSuccess, existingAccounts, onRegiste
     }
 
     // Call registration handler in parent component to update state list dynamically
-    onRegisterAccount({
+    const createdAccount = onRegisterAccount({
       name: regName.trim(),
-      email: regEmail.trim().toLowerCase(),
+      email: emailInput.toLowerCase(),
       role: regRole,
+      passwordHash: regPassword,
     });
 
     setSuccessText('Account successfully established! Accessing platform services now.');
     
     // Automatically trigger login of newly established user after a slight delay
     setTimeout(() => {
-      // Find the account that was just appended
-      const freshlyCreatedId = `user-${regRole === 'client' ? 'client' : 'free'}-${Date.now().toString().slice(-4)}`;
-      onLoginSuccess({
-        id: freshlyCreatedId,
-        name: regName.trim(),
-        email: regEmail.trim().toLowerCase(),
-        role: regRole,
-      });
+      onLoginSuccess(createdAccount);
     }, 1000);
   };
 
