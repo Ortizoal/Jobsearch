@@ -221,7 +221,7 @@ export default function ApplicationsList({
               </div>
 
               {/* Applicant side (visible to Admin and Client) */}
-              <div className="md:col-span-5 flex flex-col justify-between border-l border-slate-50 pl-0 md:pl-5 pt-2 md:pt-0">
+              <div className="md:col-span-5 flex flex-col justify-between border-t md:border-t-0 border-slate-100 md:border-l md:border-slate-50 pl-0 md:pl-5 pt-4 md:pt-0">
                 <div>
                   <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                     <User className="w-3.5 h-3.5 text-indigo-500" />

@@ -722,8 +722,8 @@ export default function App() {
 
       {/* Primary Dashboard Navigation Header */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-45">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-0 md:h-18 flex flex-col md:flex-row items-center justify-between gap-3.5">
+          <div className="flex items-center gap-2.5 self-start md:self-auto">
             <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-sm">
               F
             </div>
@@ -736,13 +736,13 @@ export default function App() {
           </div>
 
           {/* Dynamic Tabs list based on Active Role */}
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 overflow-x-auto max-w-full w-full md:w-auto pb-1.5 md:pb-0 scrollbar-none snap-x snap-mandatory">
             {currentRole === 'freelancer' && (
               <>
                 <button
                   type="button"
                   onClick={() => setFreelancerTab('find_work')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     freelancerTab === 'find_work' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -753,7 +753,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setFreelancerTab('tracker')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
                     freelancerTab === 'tracker' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -761,7 +761,7 @@ export default function App() {
                 >
                   My Job Tracker
                   {freelancerApplications.length > 0 && (
-                    <span className="bg-indigo-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center">
+                    <span className="bg-indigo-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center select-none">
                       {freelancerApplications.length}
                     </span>
                   )}
@@ -769,7 +769,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setFreelancerTab('profile')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     freelancerTab === 'profile' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -780,7 +780,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setFreelancerTab('messages')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     freelancerTab === 'messages' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -796,7 +796,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setClientTab('my_listings')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     clientTab === 'my_listings' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -807,18 +807,18 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setClientTab('post_job')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 flex items-center gap-1 ${
                     clientTab === 'post_job' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
-                  <PlusCircle className="w-3.5 h-3.5" /> Post Job Offer
+                  <PlusCircle className="w-3.5 h-3.5 text-indigo-500" /> Post Job Offer
                 </button>
                 <button
                   type="button"
                   onClick={() => setClientTab('browse_talents')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     clientTab === 'browse_talents' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -829,7 +829,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setClientTab('messages')}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                  className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
                     clientTab === 'messages' 
                       ? 'bg-indigo-50 text-indigo-700' 
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -844,7 +844,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setAdminTab('console')}
-                className={`px-4 py-2 rounded-lg font-semibold text-xs bg-indigo-50 text-indigo-700`}
+                className={`shrink-0 px-4 py-2 rounded-lg font-semibold text-xs bg-indigo-50 text-indigo-700`}
               >
                 Moderator Console
               </button>
@@ -942,7 +942,7 @@ export default function App() {
                     </div>
 
                     {/* Fit My Profile Skills toggle helper */}
-                    <div className="md:col-span-2 flex items-center gap-2 border-l border-slate-100 pl-2">
+                    <div className="md:col-span-2 flex items-center gap-2 border-t pt-2.5 md:border-t-0 md:pt-0 md:border-l border-slate-100 md:pl-2">
                       <input 
                         type="checkbox"
                         id="matchSkillsToggle"
@@ -1123,7 +1123,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Full Specialist Name *</label>
                       <input 
@@ -1157,7 +1157,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Hourly Service Rate ($) *</label>
                       <div className="relative">
@@ -1172,7 +1172,7 @@ export default function App() {
                         />
                       </div>
                     </div>
-                    <div className="text-xs text-slate-400 pt-5 leading-relaxed">
+                    <div className="text-xs text-slate-400 sm:pt-5 leading-relaxed">
                       This represents your base bid fee displayed on listing hubs.
                     </div>
                   </div>
@@ -1331,7 +1331,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Corporate Segment Category</label>
                       <select 
@@ -1360,7 +1360,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 items-center">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                     <div>
                       <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Payment Method</label>
                       <div className="flex gap-2">
