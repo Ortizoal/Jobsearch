@@ -18,6 +18,7 @@ import ApplicationsList from './components/ApplicationsList';
 import Messenger from './components/Messenger';
 import AdminPanel from './components/AdminPanel';
 import AdminLockScreen from './components/AdminLockScreen';
+import AuthScreen from './components/AuthScreen';
 import SkillSelector from './components/SkillSelector';
 import { 
   Briefcase, 
@@ -72,6 +73,93 @@ export default function App() {
 
   // Simulator Contexts
   const [currentRole, setCurrentRole] = useState<UserRole>('freelancer');
+
+  // User Account Authentication Context
+  interface UserAccount {
+    id: string;
+    email: string;
+    name: string;
+    role: 'client' | 'freelancer' | 'admin';
+    passwordHash: string;
+  }
+
+  const [accounts, setAccounts] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem('fm_accounts');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 'free-1',
+        email: 'sarah.connor@dev.io',
+        name: 'Sarah Connor',
+        role: 'freelancer',
+        passwordHash: 'password'
+      },
+      {
+        id: 'free-2',
+        email: 'alex.rivera@dev.io',
+        name: 'Alex Rivera',
+        role: 'freelancer',
+        passwordHash: 'password'
+      },
+      {
+        id: 'client-1',
+        email: 'client@moderntech.io',
+        name: 'ModernTech Ventures',
+        role: 'client',
+        passwordHash: 'password'
+      },
+      {
+        id: 'admin-1',
+        email: 'admin@platform.io',
+        name: 'System Admin',
+        role: 'admin',
+        passwordHash: 'admin'
+      }
+    ];
+  });
+
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    const saved = localStorage.getItem('fm_current_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const handleRegisterAccount = (newUser: { name: string; email: string; role: 'client' | 'freelancer' }) => {
+    const generatedId = `user-${newUser.role === 'client' ? 'client' : 'free'}-${Date.now().toString().slice(-4)}`;
+    
+    const newAcc: UserAccount = {
+      id: generatedId,
+      email: newUser.email,
+      name: newUser.name,
+      role: newUser.role,
+      passwordHash: 'password', // Default fallback so they can sign in again
+    };
+    
+    setAccounts(prev => [...prev, newAcc]);
+
+    if (newUser.role === 'freelancer') {
+      const newPrf: FreelancerProfile = {
+        id: generatedId,
+        name: newUser.name,
+        title: 'New Freelancer Specialist',
+        bio: 'Welcome to my profile. I have just established my specialized account on FlexiWorks.',
+        hourlyRate: 50,
+        skills: ['Web Development', 'React'],
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
+        verified: false,
+        portfolio: [],
+        email: newUser.email,
+        rating: 5.0,
+        completedJobs: 0,
+      };
+      setProfiles(prev => [...prev, newPrf]);
+      setSelectedFreelancerId(generatedId);
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setIsAdminAuthorized(false);
+  };
 
   // Administrative Credentials Safety and Authorization
   const [adminPasscode, setAdminPasscode] = useState<string>(() => {
@@ -173,12 +261,33 @@ export default function App() {
     sessionStorage.setItem('fm_is_admin_authorized', isAdminAuthorized ? 'true' : 'false');
   }, [isAdminAuthorized]);
 
+  useEffect(() => {
+    localStorage.setItem('fm_accounts', JSON.stringify(accounts));
+  }, [accounts]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('fm_current_user', JSON.stringify(currentUser));
+      // Restrict role to user selection
+      if (currentUser.role === 'client') {
+        setCurrentRole('client');
+      } else if (currentUser.role === 'freelancer') {
+        setCurrentRole('freelancer');
+        setSelectedFreelancerId(currentUser.id);
+      } else if (currentUser.role === 'admin') {
+        setCurrentRole('admin');
+      }
+    } else {
+      localStorage.removeItem('fm_current_user');
+    }
+  }, [currentUser]);
+
   // Utility calculations
   const categories = ['All', 'Web Development', 'Design & Creative', 'Writing & Translation', 'Marketing & Sales'];
 
   // Current Users Simulation IDs
   const CURRENT_FREELANCER_ID = selectedFreelancerId;
-  const CURRENT_CLIENT_ID = 'ModernTech Ventures';
+  const CURRENT_CLIENT_ID = currentUser?.role === 'client' ? currentUser.name : 'ModernTech Ventures';
 
   const activeFreelancerProfile = profiles.find(p => p.id === CURRENT_FREELANCER_ID);
   const isProfileAdmin = activeFreelancerProfile?.isAdmin === true;
@@ -213,7 +322,7 @@ export default function App() {
     const newJob: Job = {
       id: `job-${Date.now()}`,
       title: newJobTitle.trim(),
-      clientName: 'ModernTech Ventures', // Client session name
+      clientName: CURRENT_CLIENT_ID, // Client session name
       clientAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120&h=120',
       category: newJobCategory,
       budget: Number(newJobBudget) || 500,
@@ -543,8 +652,8 @@ export default function App() {
         id: `chat-${Date.now()}`,
         jobId: jobDetail.id,
         jobTitle: jobDetail.title,
-        clientId: 'ModernTech Ventures',
-        clientName: 'ModernTech Ventures',
+        clientId: CURRENT_CLIENT_ID,
+        clientName: CURRENT_CLIENT_ID,
         clientAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120&h=120',
         freelancerId: freelancerId,
         freelancerName: freeDetail.name,
@@ -556,8 +665,8 @@ export default function App() {
       const newMsg: Message = {
         id: `msg-${Date.now()}`,
         chatId: newChat.id,
-        senderId: 'ModernTech Ventures',
-        senderName: 'ModernTech Ventures',
+        senderId: CURRENT_CLIENT_ID,
+        senderName: CURRENT_CLIENT_ID,
         text: `Hello ${freeDetail.name}! We saw your portfolio and are highly interested in contracting you for "${jobDetail.title}". Let us discuss hourly expectations and your availability next week!`,
         createdAt: new Date().toISOString()
       };
@@ -577,7 +686,7 @@ export default function App() {
   // Contact on profile browsing click
   const handleContactGeneral = (profile: FreelancerProfile) => {
     // Pick first available client job, or make placeholder text
-    const defaultJob = jobs.find(j => j.clientName === 'ModernTech Ventures') || jobs[0];
+    const defaultJob = jobs.find(j => j.clientName === CURRENT_CLIENT_ID) || jobs[0];
     if (defaultJob) {
       handleContactFreelancer(profile.id, defaultJob.id);
     }
@@ -586,7 +695,7 @@ export default function App() {
   // --- MESSAGING TEXT DISPATCHER ---
   const handleSendMessage = (chatId: string, text: string) => {
     const senderId = getCurrentUserId();
-    const senderName = currentRole === 'freelancer' ? profileName : currentRole === 'client' ? 'ModernTech Ventures' : 'System Staff';
+    const senderName = currentRole === 'freelancer' ? profileName : currentRole === 'client' ? CURRENT_CLIENT_ID : 'System Staff';
 
     const newMsg: Message = {
       id: `msg-${Date.now()}`,
@@ -675,7 +784,7 @@ export default function App() {
 
   const freelancerApplications = applications.filter(app => app.freelancerId === CURRENT_FREELANCER_ID);
   const clientApplications = applications.filter(app => {
-    const jobOfClient = jobs.find(j => j.id === app.jobId && j.clientName === 'ModernTech Ventures');
+    const jobOfClient = jobs.find(j => j.id === app.jobId && j.clientName === CURRENT_CLIENT_ID);
     return !!jobOfClient;
   });
 
@@ -685,73 +794,119 @@ export default function App() {
     { title: "Figma to Frontend", text: "I can slice and convert Figma layouts to pure React/Tailwind component hierarchies flawlessly. Every margins, typographic weight, and flex container alignment is highly faithful to your draft specs." }
   ];
 
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        onLoginSuccess={(acc) => {
+          setCurrentUser(acc);
+        }}
+        existingAccounts={accounts}
+        onRegisterAccount={handleRegisterAccount}
+        profiles={profiles}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 text-slate-800 font-sans antialiased">
       
       {/* Visual Workspace Sandbox Notice Banner */}
-      <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-950 text-white py-3.5 px-4 text-center border-b border-indigo-900 shadow-inner">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-xs bg-indigo-500/35 border border-indigo-400/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-indigo-100">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" /> SIMULATOR MODE
-          </span>
-          <p className="text-sm font-medium text-slate-100">
-            Switch current actor views instantly at the right using the responsive control deck:
-          </p>
-          
-          <div className="flex bg-indigo-900/50 border border-indigo-700/60 p-1 rounded-lg items-center">
+      {currentUser?.role === 'admin' ? (
+        <div className="bg-gradient-to-r from-indigo-700 via-indigo-800 to-indigo-950 text-white py-3.5 px-4 text-center border-b border-indigo-900 shadow-inner animate-fadeIn">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs bg-indigo-500/35 border border-indigo-400/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-indigo-100">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-amber-300" /> SIMULATOR MODE
+            </span>
+            <p className="text-sm font-medium text-slate-100">
+              Switch current actor views instantly at the right using the responsive control deck:
+            </p>
+            
+            <div className="flex bg-indigo-900/50 border border-indigo-700/60 p-1 rounded-lg items-center">
+              <button
+                type="button"
+                onClick={() => handleRoleChange('freelancer')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  currentRole === 'freelancer' 
+                    ? 'bg-white text-indigo-950 shadow font-bold' 
+                    : 'text-indigo-200 hover:text-white'
+                }`}
+              >
+                <User className="w-3 h-3" /> Freelancer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('client')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  currentRole === 'client' 
+                    ? 'bg-white text-indigo-950 shadow font-bold' 
+                    : 'text-indigo-200 hover:text-white'
+                }`}
+              >
+                <Briefcase className="w-3 h-3" /> Client
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange('admin')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
+                  currentRole === 'admin' 
+                    ? 'bg-white text-indigo-950 shadow font-bold' 
+                    : 'text-indigo-200 hover:text-white'
+                }`}
+              >
+                <Award className="w-3 h-3" /> Admin Staff
+              </button>
+            </div>
+
+            {currentRole === 'freelancer' && (
+              <div className="flex items-center gap-2 bg-indigo-950/60 border border-indigo-700/55 px-3 py-1.5 rounded-lg shrink-0">
+                <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">Act As:</span>
+                <select
+                  value={selectedFreelancerId}
+                  onChange={(e) => setSelectedFreelancerId(e.target.value)}
+                  className="bg-indigo-900 text-white text-xs font-extrabold border-none hover:bg-indigo-850 focus:ring-1 focus:ring-indigo-400 rounded px-2 py-0.5 cursor-pointer max-w-[130px] sm:max-w-none"
+                >
+                  {profiles.map(p => (
+                    <option key={p.id} value={p.id} className="text-slate-900 font-medium">
+                      {p.name} {p.isAdmin ? '👑 [Admin]' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
             <button
-              type="button"
-              onClick={() => handleRoleChange('freelancer')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                currentRole === 'freelancer' 
-                  ? 'bg-white text-indigo-950 shadow font-bold' 
-                  : 'text-indigo-200 hover:text-white'
-              }`}
+              onClick={handleLogout}
+              className="text-[10px] font-bold text-indigo-200 hover:text-rose-200 hover:border-rose-450 border border-indigo-700 hover:bg-rose-950/15 bg-indigo-900/50 px-2 py-1 rounded transition ml-auto"
             >
-              <User className="w-3 h-3" /> Freelancer
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleChange('client')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                currentRole === 'client' 
-                  ? 'bg-white text-indigo-950 shadow font-bold' 
-                  : 'text-indigo-200 hover:text-white'
-              }`}
-            >
-              <Briefcase className="w-3 h-3" /> Client
-            </button>
-            <button
-              type="button"
-              onClick={() => handleRoleChange('admin')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
-                currentRole === 'admin' 
-                  ? 'bg-white text-indigo-950 shadow font-bold' 
-                  : 'text-indigo-200 hover:text-white'
-              }`}
-            >
-              <Award className="w-3 h-3" /> Admin Staff
+              Sign Out [Admin]
             </button>
           </div>
-
-          {currentRole === 'freelancer' && (
-            <div className="flex items-center gap-2 bg-indigo-950/60 border border-indigo-700/55 px-3 py-1.5 rounded-lg shrink-0">
-              <span className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">Act As:</span>
-              <select
-                value={selectedFreelancerId}
-                onChange={(e) => setSelectedFreelancerId(e.target.value)}
-                className="bg-indigo-900 text-white text-xs font-extrabold border-none hover:bg-indigo-850 focus:ring-1 focus:ring-indigo-400 rounded px-2 py-0.5 cursor-pointer max-w-[130px] sm:max-w-none"
-              >
-                {profiles.map(p => (
-                  <option key={p.id} value={p.id} className="text-slate-900 font-medium">
-                    {p.name} {p.isAdmin ? '👑 [Admin]' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
-      </div>
+      ) : (
+        /* Real dynamic secure user session top status strip */
+        <div className="bg-slate-900 text-slate-100 py-2.5 px-4 shadow-sm select-none">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs">
+              <span className="inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-slate-300">
+                Logged in as: <strong className="text-white font-extrabold">{currentUser?.name}</strong> 
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] uppercase font-black bg-indigo-900/70 text-indigo-200 rounded border border-indigo-800/80">
+                  {currentUser?.role} Mode
+                </span>
+                {currentUser?.role === 'freelancer' && activeFreelancerProfile?.isAdmin && (
+                  <span className="ml-1 text-purple-400 font-bold"> [👑 Platform Administrator]</span>
+                )}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-[11px] font-extrabold text-slate-400 hover:text-rose-400 border border-slate-700/80 hover:border-rose-900 bg-slate-800/70 hover:bg-rose-950/20 px-3 py-1 rounded-lg transition self-end sm:self-auto cursor-pointer"
+            >
+              Sign Out Session
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Primary Dashboard Navigation Header */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-45">
@@ -763,7 +918,7 @@ export default function App() {
             <div>
               <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-none">Marketplace Deck</h1>
               <span className="text-[10px] text-slate-400 font-semibold block mt-0.5 uppercase tracking-wide">
-                Role: <strong className="text-indigo-600">{currentRole} simulation</strong>
+                Role: <strong className="text-indigo-600">{currentUser?.role === 'admin' ? `${currentRole} simulation` : currentUser?.role}</strong>
               </span>
             </div>
           </div>
@@ -1281,7 +1436,7 @@ export default function App() {
                   </button>
                 </div>
 
-                {jobs.filter(j => j.clientName === 'ModernTech Ventures').length === 0 ? (
+                {jobs.filter(j => j.clientName === CURRENT_CLIENT_ID).length === 0 ? (
                   <div className="bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center max-w-lg mx-auto">
                     <Briefcase className="w-12 h-12 text-slate-350 mx-auto mb-2 opacity-50" />
                     <h3 className="font-bold text-base text-slate-800">No Postings Active</h3>
@@ -1296,7 +1451,7 @@ export default function App() {
                     <div className="lg:col-span-6 space-y-4">
                       <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Manage Posted Openings</h3>
                       <div className="space-y-4">
-                        {jobs.filter(j => j.clientName === 'ModernTech Ventures').map(job => (
+                        {jobs.filter(j => j.clientName === CURRENT_CLIENT_ID).map(job => (
                           <JobCard 
                             key={job.id}
                             job={job}
