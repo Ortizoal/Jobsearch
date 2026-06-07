@@ -36,7 +36,9 @@ import {
   Tag,
   Clock,
   Sparkles,
-  Award
+  Award,
+  Lightbulb,
+  Star
 } from 'lucide-react';
 
 export default function App() {
@@ -1002,6 +1004,99 @@ export default function App() {
                     Your profile describes your hourly bids, bio details, and skills to client listings.
                   </p>
                 </div>
+
+                {/* Profile Completeness Strength Progress Bar Widget */}
+                {(() => {
+                  let score = 0;
+                  const steps = [];
+
+                  const hasTitle = profileTitle && profileTitle.trim().length > 0;
+                  if (hasTitle) score += 25;
+                  steps.push({ name: 'Professional Title', done: hasTitle });
+
+                  const hasHourlyRate = typeof profileHourlyRate === 'number' && profileHourlyRate > 0;
+                  if (hasHourlyRate) score += 25;
+                  steps.push({ name: 'Hourly Service Rate', done: hasHourlyRate });
+
+                  const hasSkills = Array.isArray(profileSkills) && profileSkills.length > 0;
+                  if (hasSkills) score += 25;
+                  steps.push({ name: 'Skills Tag Portfolio', done: hasSkills });
+
+                  const hasBio = profileBio && profileBio.trim().length > 0;
+                  if (hasBio) score += 25;
+                  steps.push({ name: 'Specialist Bio Details', done: hasBio });
+
+                  return (
+                    <div className="bg-slate-50/70 border border-slate-100/80 rounded-xl p-4 sm:p-5 mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Profile Strength Index</span>
+                          <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full ${
+                            score === 100 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : score >= 75 
+                              ? 'bg-indigo-100 text-indigo-800' 
+                              : score >= 50 
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {score === 100 ? 'Outstanding' : score >= 75 ? 'Strong' : score >= 50 ? 'Intermediate' : 'Incomplete'}
+                          </span>
+                        </div>
+                        <span className="text-base font-black text-indigo-650 tracking-tight">{score}%</span>
+                      </div>
+
+                      {/* Progress Track */}
+                      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden relative shadow-inner mb-4">
+                        <div 
+                          className="bg-gradient-to-r from-emerald-400 via-teal-500 to-indigo-600 h-full rounded-full transition-all duration-500 ease-out"
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
+
+                      {/* Criteria Checklist grids */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {steps.map((step, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`flex items-center justify-between p-2.5 rounded-lg border text-xs transition duration-200 ${
+                              step.done 
+                                ? 'bg-white text-slate-700 border-slate-200/60 shadow-xs' 
+                                : 'bg-slate-50 text-slate-400 border-dashed border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CheckCircle className={`w-4 h-4 flex-shrink-0 ${step.done ? 'text-emerald-500 fill-emerald-50' : 'text-slate-300'}`} />
+                              <span className={`font-semibold truncate ${step.done ? 'text-slate-750' : 'text-slate-400 font-medium'}`}>{step.name}</span>
+                            </div>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ml-1.5 flex-shrink-0 ${step.done ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
+                              {step.done ? '+25%' : '0%'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Dynamic Help tip */}
+                      <div className="mt-3.5 pt-3.5 border-t border-slate-200/50 flex gap-2 items-start text-xs">
+                        {score === 100 ? (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-slate-600 font-medium leading-normal">
+                              🎉 Your profile is 100% complete! Fully ready to rank higher in browse search feeds and attract top client contracts.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <Lightbulb className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0 mt-0.5 animate-pulse" />
+                            <p className="text-slate-500 font-medium leading-normal">
+                              💡 Complete your profile to build client trust. Unfinished sections: <span className="text-indigo-600 font-bold">{steps.filter(s => !s.done).map(s => s.name).join(', ')}</span>.
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   {profileSaveSuccess && (
