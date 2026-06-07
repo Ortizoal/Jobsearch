@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Job } from '../types';
+import { renderAvatar } from './AvatarPicker';
 import { 
   Briefcase, 
   Clock, 
@@ -81,12 +82,7 @@ export default function JobCard({
 
       <div className="p-5 md:p-6">
         <div className="flex items-start gap-4">
-          <img 
-            src={job.clientAvatar} 
-            alt={job.clientName}
-            referrerPolicy="no-referrer"
-            className="w-12 h-12 rounded-lg object-cover ring-2 ring-slate-100 flex-shrink-0"
-          />
+          {renderAvatar(job.clientAvatar, job.clientName, "w-12 h-12 rounded-lg object-cover ring-2 ring-slate-100 flex-shrink-0")}
           <div className="flex-grow min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="text-sm font-medium text-slate-500 truncate flex items-center gap-1.5">

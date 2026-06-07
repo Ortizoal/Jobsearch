@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { FreelancerProfile } from '../types';
+import { renderAvatar } from './AvatarPicker';
 import { 
   Star, 
   MapPin, 
@@ -43,13 +44,8 @@ export default function FreelancerCard({
       className="bg-white rounded-xl border border-slate-100 p-5 md:p-6 shadow-sm hover:shadow hover:border-slate-300 transition-all duration-300"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-slate-50">
-        <div className="relative">
-          <img 
-            src={profile.avatar} 
-            alt={profile.name}
-            referrerPolicy="no-referrer"
-            className="w-16 h-16 rounded-full object-cover ring-4 ring-indigo-50"
-          />
+        <div className="relative border-none">
+          {renderAvatar(profile.avatar, profile.name, "w-16 h-16 rounded-full object-cover ring-4 ring-indigo-50")}
           {profile.verified && (
             <span 
               className="absolute -bottom-1 -right-1 bg-indigo-600 text-white rounded-full p-1" 

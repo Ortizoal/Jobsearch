@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Application, Job, FreelancerProfile } from '../types';
+import { renderAvatar } from './AvatarPicker';
 import { 
   CheckCircle, 
   XCircle, 
@@ -228,12 +229,7 @@ export default function ApplicationsList({
                     Specialist Profile
                   </h4>
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={freelancer.avatar} 
-                      alt={freelancer.name}
-                      referrerPolicy="no-referrer"
-                      className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100"
-                    />
+                    {renderAvatar(freelancer.avatar, freelancer.name, "w-11 h-11 rounded-full object-cover ring-2 ring-slate-100")}
                     <div className="min-w-0">
                       <h5 className="text-sm font-bold text-slate-900 truncate flex items-center gap-1">
                         {freelancer.name}

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Chat, Message, UserRole } from '../types';
+import { renderAvatar } from './AvatarPicker';
 import { 
   Send, 
   MessageSquare, 
@@ -104,12 +105,7 @@ export default function Messenger({
                       : 'hover:bg-slate-100/50 text-slate-800 bg-white border border-slate-100/50'
                   }`}
                 >
-                  <img 
-                    src={displayAvatar} 
-                    alt={displayName}
-                    referrerPolicy="no-referrer"
-                    className="w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-slate-100"
-                  />
+                  {renderAvatar(displayAvatar, displayName, "w-10 h-10 rounded-full object-cover shrink-0 ring-2 ring-slate-100")}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-50' : 'text-slate-900'}`}>
@@ -150,12 +146,11 @@ export default function Messenger({
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <img 
-                  src={currentRole === 'freelancer' ? activeChat.clientAvatar : activeChat.freelancerAvatar} 
-                  alt={currentRole === 'freelancer' ? activeChat.clientName : activeChat.freelancerName}
-                  referrerPolicy="no-referrer"
-                  className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-50"
-                />
+                {renderAvatar(
+                  currentRole === 'freelancer' ? activeChat.clientAvatar : activeChat.freelancerAvatar,
+                  currentRole === 'freelancer' ? activeChat.clientName : activeChat.freelancerName,
+                  "w-10 h-10 rounded-full object-cover ring-2 ring-indigo-50"
+                )}
                 <div>
                   <h4 className="font-bold text-sm text-slate-900 flex items-center gap-1.5 leading-none">
                     {currentRole === 'freelancer' ? activeChat.clientName : activeChat.freelancerName}

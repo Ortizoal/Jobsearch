@@ -20,6 +20,7 @@ import AdminPanel from './components/AdminPanel';
 import AdminLockScreen from './components/AdminLockScreen';
 import AuthScreen from './components/AuthScreen';
 import SkillSelector from './components/SkillSelector';
+import AvatarPicker, { renderAvatar } from './components/AvatarPicker';
 import { 
   Briefcase, 
   Users, 
@@ -85,6 +86,9 @@ export default function App() {
     name: string;
     role: 'client' | 'freelancer' | 'admin';
     passwordHash: string;
+    avatar?: string;
+    bio?: string;
+    industry?: string;
   }
 
   const [accounts, setAccounts] = useState<UserAccount[]>(() => {
@@ -236,6 +240,7 @@ export default function App() {
       name: newUser.name,
       role: newUser.role,
       passwordHash: 'password', // Default fallback so they can sign in again
+      avatar: newUser.role === 'client' ? 'gradient:from-emerald-400 to-teal-600' : 'gradient:from-indigo-500 to-purple-600',
     };
     
     setAccounts(prev => [...prev, newAcc]);
@@ -261,7 +266,7 @@ export default function App() {
         bio: 'Welcome to my profile. I have just established my specialized account on FlexiWorks.',
         hourlyRate: 50,
         skills: ['Web Development', 'React'],
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
+        avatar: 'gradient:from-indigo-500 to-purple-600',
         verified: false,
         portfolio: [],
         email: newUser.email,
@@ -291,7 +296,7 @@ export default function App() {
   
   // Tabs trackers per role
   const [freelancerTab, setFreelancerTab] = useState<'find_work' | 'tracker' | 'profile' | 'messages'>('find_work');
-  const [clientTab, setClientTab] = useState<'post_job' | 'my_listings' | 'browse_talents' | 'messages'>('my_listings');
+  const [clientTab, setClientTab] = useState<'post_job' | 'my_listings' | 'browse_talents' | 'messages' | 'profile'>('my_listings');
   const [adminTab, setAdminTab] = useState<'console'>('console');
 
   // Search & Filter state
@@ -323,7 +328,16 @@ export default function App() {
   const [profileHourlyRate, setProfileHourlyRate] = useState(75);
   const [profileSkills, setProfileSkills] = useState<string[]>(['React', 'Tailwind CSS', 'TypeScript', 'Vite', 'Figma']);
   const [profileEmail, setProfileEmail] = useState('sarah.connor@dev.io');
+  const [profileAvatar, setProfileAvatar] = useState('https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120&h=120');
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+
+  // Form State for Client Profile Edit
+  const [clientProfileName, setClientProfileName] = useState('ModernTech Ventures');
+  const [clientProfileEmail, setClientProfileEmail] = useState('client@moderntech.io');
+  const [clientProfileBio, setClientProfileBio] = useState('We specialize in innovative digital designs and premium SaaS dashboard analytics.');
+  const [clientProfileAvatar, setClientProfileAvatar] = useState('https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120&h=120');
+  const [clientProfileIndustry, setClientProfileIndustry] = useState('Technology');
+  const [clientSaveSuccess, setClientSaveSuccess] = useState(false);
 
   // Search & Filter state for Browse Specialists (Client role)
   const [talentSearchQuery, setTalentSearchQuery] = useState('');
@@ -342,8 +356,30 @@ export default function App() {
       setProfileHourlyRate(activePrf.hourlyRate);
       setProfileSkills(activePrf.skills || []);
       setProfileEmail(activePrf.email);
+      setProfileAvatar(activePrf.avatar || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=120&h=120');
     }
   }, [profiles, selectedFreelancerId]);
+
+  // Initialize and load default client profile settings based on currentUser
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'client') {
+      setClientProfileName(currentUser.name || '');
+      setClientProfileEmail(currentUser.email || '');
+      setClientProfileBio(currentUser.bio || '');
+      setClientProfileAvatar(currentUser.avatar || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120&h=120');
+      setClientProfileIndustry(currentUser.industry || 'Technology');
+    } else {
+      // Look up 'client-1' as fallback
+      const fallbackClient = accounts.find(a => a.id === 'client-1');
+      if (fallbackClient) {
+        setClientProfileName(fallbackClient.name || 'ModernTech Ventures');
+        setClientProfileEmail(fallbackClient.email || 'client@moderntech.io');
+        setClientProfileBio(fallbackClient.bio || 'We specialize in innovative digital designs and premium SaaS dashboard analytics.');
+        setClientProfileAvatar(fallbackClient.avatar || 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=120&h=120');
+        setClientProfileIndustry(fallbackClient.industry || 'Technology');
+      }
+    }
+  }, [currentUser, accounts]);
 
   useEffect(() => {
     localStorage.setItem('fm_selected_freelancer_id', selectedFreelancerId);
@@ -484,7 +520,7 @@ export default function App() {
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setProfiles(prev => prev.map(p => {
-      if (p.id === 'free-1') {
+      if (p.id === CURRENT_FREELANCER_ID) {
         return {
           ...p,
           name: profileName,
@@ -492,15 +528,93 @@ export default function App() {
           bio: profileBio,
           hourlyRate: profileHourlyRate,
           email: profileEmail,
-          skills: profileSkills
+          skills: profileSkills,
+          avatar: profileAvatar
         };
       }
       return p;
     }));
 
+    // Cascade to update active chats
+    setChats(prev => prev.map(chat => {
+      if (chat.freelancerId === CURRENT_FREELANCER_ID) {
+        return {
+          ...chat,
+          freelancerName: profileName,
+          freelancerAvatar: profileAvatar
+        };
+      }
+      return chat;
+    }));
+
+    // Core credentials / system session sync
+    if (currentUser && currentUser.id === CURRENT_FREELANCER_ID) {
+      const updatedUser = { 
+        ...currentUser, 
+        name: profileName, 
+        email: profileEmail,
+        avatar: profileAvatar
+      };
+      setCurrentUser(updatedUser);
+      setAccounts(prev => prev.map(acc => acc.id === currentUser.id ? updatedUser : acc));
+    }
+
     setProfileSaveSuccess(true);
     setTimeout(() => {
       setProfileSaveSuccess(false);
+    }, 2000);
+  };
+
+  const handleSaveClientProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const oldName = currentUser.name;
+    const newName = clientProfileName.trim();
+    const newEmail = clientProfileEmail.trim();
+    const newBio = clientProfileBio.trim();
+    const newAvatar = clientProfileAvatar;
+    const newIndustry = clientProfileIndustry;
+
+    const updatedUser = {
+      ...currentUser,
+      name: newName,
+      email: newEmail,
+      bio: newBio,
+      avatar: newAvatar,
+      industry: newIndustry
+    };
+
+    setCurrentUser(updatedUser);
+    setAccounts(prev => prev.map(acc => acc.id === currentUser.id ? updatedUser : acc));
+
+    // Update existing posted jobs by this client (syncing title/avatar)
+    setJobs(prev => prev.map(job => {
+      if (job.clientName === oldName || job.clientName === currentUser.id) {
+        return {
+          ...job,
+          clientName: newName,
+          clientAvatar: newAvatar
+        };
+      }
+      return job;
+    }));
+
+    // Sync chats
+    setChats(prev => prev.map(chat => {
+      let updatedChat = { ...chat };
+      let changed = false;
+      if (chat.clientId === currentUser.id || chat.clientName === oldName) {
+        updatedChat.clientName = newName;
+        updatedChat.clientAvatar = newAvatar;
+        changed = true;
+      }
+      return changed ? updatedChat : chat;
+    }));
+
+    setClientSaveSuccess(true);
+    setTimeout(() => {
+      setClientSaveSuccess(false);
     }, 2000);
   };
 
@@ -1147,6 +1261,17 @@ export default function App() {
                   >
                     Messenger
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setClientTab('profile')}
+                    className={`shrink-0 snap-start px-3.5 py-1.5 rounded-lg font-semibold text-xs transition duration-250 ${
+                      clientTab === 'profile' 
+                        ? 'bg-indigo-50 text-indigo-700' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    Edit Profile
+                  </button>
                 </>
               )}
 
@@ -1550,6 +1675,16 @@ export default function App() {
                       <CheckCircle className="w-4 h-4" /> Profile edits updated successfully!
                     </div>
                   )}
+
+                  {/* Avatar Picker Form Block */}
+                  <div className="bg-slate-50/30 border border-slate-100 rounded-xl p-4 sm:p-5 mb-2">
+                    <AvatarPicker 
+                      currentAvatar={profileAvatar}
+                      onChange={setProfileAvatar}
+                      userName={profileName}
+                      label="Your Profile Portrait Pic"
+                    />
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -1979,6 +2114,94 @@ export default function App() {
                 currentUserId={CURRENT_CLIENT_ID}
                 onSendMessage={handleSendMessage}
               />
+            )}
+
+            {/* CLIENT PROFILE INTEGRATION VIEW */}
+            {clientTab === 'profile' && (
+              <div className="max-w-2xl mx-auto bg-white rounded-xl border border-slate-100 shadow-sm p-6 sm:p-8">
+                <div className="pb-4 border-b border-slate-50 mb-6">
+                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <User className="text-indigo-600 w-5 h-5" /> Client Profile Settings
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Your company details, contact email, and profile avatar are displayed across posted projects and message threads.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveClientProfile} className="space-y-4">
+                  {clientSaveSuccess && (
+                     <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs p-3 rounded-lg font-semibold flex items-center gap-2">
+                       <CheckCircle className="w-4 h-4" /> Client profile updated successfully! All active postings and chat indicators have been synchronized.
+                     </div>
+                  )}
+
+                  {/* Avatar Picker Form Block */}
+                  <div className="bg-slate-50/30 border border-slate-100 rounded-xl p-4 sm:p-5 mb-2">
+                    <AvatarPicker 
+                      currentAvatar={clientProfileAvatar}
+                      onChange={setClientProfileAvatar}
+                      userName={clientProfileName}
+                      label="Company / Client Logo"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Company / Brand Name *</label>
+                      <input 
+                        type="text" 
+                        value={clientProfileName}
+                        onChange={(e) => setClientProfileName(e.target.value)}
+                        required
+                        className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Contact Email *</label>
+                      <input 
+                        type="email" 
+                        value={clientProfileEmail}
+                        onChange={(e) => setClientProfileEmail(e.target.value)}
+                        required
+                        className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Industry Sector *</label>
+                    <input 
+                      type="text" 
+                      value={clientProfileIndustry}
+                      onChange={(e) => setClientProfileIndustry(e.target.value)}
+                      placeholder="e.g. Technology, Health & Wellness, E-Commerce"
+                      required
+                      className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-550 block mb-1">Company Bio / Description *</label>
+                    <textarea 
+                      rows={4}
+                      value={clientProfileBio}
+                      onChange={(e) => setClientProfileBio(e.target.value)}
+                      placeholder="Describe your company background or types of projects you usually hire for..."
+                      required
+                      className="w-full border border-slate-200 rounded-lg p-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm hover:shadow transition"
+                    >
+                      Save Client Details
+                    </button>
+                  </div>
+                </form>
+              </div>
             )}
 
           </div>
