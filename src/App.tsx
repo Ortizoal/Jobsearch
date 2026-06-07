@@ -17,6 +17,7 @@ import FreelancerCard from './components/FreelancerCard';
 import ApplicationsList from './components/ApplicationsList';
 import Messenger from './components/Messenger';
 import AdminPanel from './components/AdminPanel';
+import AdminLockScreen from './components/AdminLockScreen';
 import SkillSelector from './components/SkillSelector';
 import { 
   Briefcase, 
@@ -38,7 +39,8 @@ import {
   Sparkles,
   Award,
   Lightbulb,
-  Star
+  Star,
+  Lock
 } from 'lucide-react';
 
 export default function App() {
@@ -70,6 +72,14 @@ export default function App() {
 
   // Simulator Contexts
   const [currentRole, setCurrentRole] = useState<UserRole>('freelancer');
+
+  // Administrative Credentials Safety and Authorization
+  const [adminPasscode, setAdminPasscode] = useState<string>(() => {
+    return localStorage.getItem('fm_admin_passcode') || 'admin123';
+  });
+  const [isAdminAuthorized, setIsAdminAuthorized] = useState<boolean>(() => {
+    return sessionStorage.getItem('fm_is_admin_authorized') === 'true';
+  });
   
   // Tabs trackers per role
   const [freelancerTab, setFreelancerTab] = useState<'find_work' | 'tracker' | 'profile' | 'messages'>('find_work');
@@ -147,6 +157,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('fm_messages', JSON.stringify(messages));
   }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem('fm_admin_passcode', adminPasscode);
+  }, [adminPasscode]);
+
+  useEffect(() => {
+    sessionStorage.setItem('fm_is_admin_authorized', isAdminAuthorized ? 'true' : 'false');
+  }, [isAdminAuthorized]);
 
   // Utility calculations
   const categories = ['All', 'Web Development', 'Design & Creative', 'Writing & Translation', 'Marketing & Sales'];
@@ -1542,16 +1560,45 @@ export default function App() {
         {/* ROLE 3: ADMIN SUITE ================== */}
         {/* ======================================= */}
         {currentRole === 'admin' && (
-          <AdminPanel 
-            jobs={jobs}
-            profiles={profiles}
-            applications={applications}
-            totalMessagesCount={messages.length}
-            onDeleteJob={handleDeleteJob}
-            onToggleFeatureJob={handleToggleFeatureJob}
-            onDeleteProfile={handleDeleteProfile}
-            onToggleVerifyProfile={handleToggleVerifyProfile}
-          />
+          !isAdminAuthorized ? (
+            <AdminLockScreen 
+              onAuthorize={() => setIsAdminAuthorized(true)}
+              savedPasscode={adminPasscode}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* Authorized session status strip */}
+              <div className="bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-800 shadow-md flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                  <div className="text-left">
+                    <h3 className="text-xs font-bold text-slate-200 tracking-wider uppercase">Administrative Console Authorized</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Confidential database, user listing controls, and system statistics console.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminAuthorized(false)}
+                  className="w-full sm:w-auto px-4 py-2 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-200 hover:text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 tracking-wide transition shadow-sm cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5 text-rose-450" /> Lock Admin Terminal
+                </button>
+              </div>
+
+              <AdminPanel 
+                jobs={jobs}
+                profiles={profiles}
+                applications={applications}
+                totalMessagesCount={messages.length}
+                adminPasscode={adminPasscode}
+                onUpdatePasscode={(newCode) => setAdminPasscode(newCode)}
+                onDeleteJob={handleDeleteJob}
+                onToggleFeatureJob={handleToggleFeatureJob}
+                onDeleteProfile={handleDeleteProfile}
+                onToggleVerifyProfile={handleToggleVerifyProfile}
+              />
+            </div>
+          )
         )}
 
       </main>

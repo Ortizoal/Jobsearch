@@ -17,7 +17,12 @@ import {
   TrendingUp,
   Sliders,
   Sparkles,
-  Award
+  Award,
+  Lock,
+  Key,
+  ShieldAlert,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -25,6 +30,8 @@ interface AdminPanelProps {
   profiles: FreelancerProfile[];
   applications: Application[];
   totalMessagesCount: number;
+  adminPasscode: string;
+  onUpdatePasscode: (code: string) => void;
   onDeleteJob: (id: string) => void;
   onToggleFeatureJob: (id: string) => void;
   onDeleteProfile: (id: string) => void;
@@ -36,12 +43,18 @@ export default function AdminPanel({
   profiles,
   applications,
   totalMessagesCount,
+  adminPasscode,
+  onUpdatePasscode,
   onDeleteJob,
   onToggleFeatureJob,
   onDeleteProfile,
   onToggleVerifyProfile
 }: AdminPanelProps) {
-  const [activeSubtab, setActiveSubtab] = useState<'listings' | 'users'>('listings');
+  const [activeSubtab, setActiveSubtab] = useState<'listings' | 'users' | 'security'>('listings');
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmPasscode, setConfirmPasscode] = useState('');
+  const [secSuccess, setSecSuccess] = useState<string | null>(null);
+  const [secError, setSecError] = useState<string | null>(null);
 
   // Stats computation
   const totalJobs = jobs.length;
@@ -50,6 +63,30 @@ export default function AdminPanel({
   const averageHourlyRate = Math.round(
     profiles.reduce((acc, p) => acc + p.hourlyRate, 0) / (totalProfiles || 1)
   );
+
+  const handleUpdateSecureKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecSuccess(null);
+    setSecError(null);
+
+    if (!newPasscode.trim()) {
+      setSecError('The new passcode cannot be blank.');
+      return;
+    }
+    if (newPasscode !== confirmPasscode) {
+      setSecError('New passcode and confirmation mismatch. Please type carefully.');
+      return;
+    }
+    if (newPasscode.length < 4) {
+      setSecError('For safety, administrative passcodes must be at least 4 characters.');
+      return;
+    }
+
+    onUpdatePasscode(newPasscode.trim());
+    setSecSuccess('Administrative passcode successfully updated. The new key is now active!');
+    setNewPasscode('');
+    setConfirmPasscode('');
+  };
 
   return (
     <div className="space-y-6">
@@ -128,12 +165,27 @@ export default function AdminPanel({
             >
               Freelancer Profiles ({profiles.length})
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSubtab('security');
+                setSecSuccess(null);
+                setSecError(null);
+              }}
+              className={`px-4 py-2 border-b-2 font-semibold text-xs text-slate-600 transition-all flex items-center gap-1.5 ${
+                activeSubtab === 'security'
+                  ? 'border-indigo-600 text-indigo-650 bg-white font-bold'
+                  : 'border-transparent hover:text-slate-800'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-500" /> Security Credentials
+            </button>
           </div>
         </div>
 
         {/* Console Lists */}
         <div className="p-4 sm:p-6">
-          {activeSubtab === 'listings' ? (
+          {activeSubtab === 'listings' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2">
                 <span className="text-xs text-slate-400 font-medium">Delete inappropriate postings or toggle feature statuses.</span>
@@ -198,7 +250,9 @@ export default function AdminPanel({
                 </div>
               )}
             </div>
-          ) : (
+          )}
+
+          {activeSubtab === 'users' && (
             <div className="space-y-3">
               <span className="text-xs text-slate-400 font-medium block pb-2">Toggle verified badges, inspect credentials or delete spam accounts.</span>
 
@@ -260,6 +314,81 @@ export default function AdminPanel({
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeSubtab === 'security' && (
+            <div className="max-w-xl mx-auto py-4 space-y-6">
+              <div className="bg-slate-50 border border-slate-200/60 p-5 rounded-xl space-y-3">
+                <h4 className="text-sm font-bold text-slate-850 uppercase tracking-wide flex items-center gap-1.5 font-sans">
+                  <ShieldAlert className="w-4 h-4 text-indigo-600" /> Change Control Console Passkey
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Update the passcode required to access administrative tools from any workspace browser session. Stored securely on your client engine.
+                </p>
+
+                {secSuccess && (
+                  <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs p-3.5 rounded-lg font-semibold flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-650 shrink-0 mt-0.5" />
+                    <span>{secSuccess}</span>
+                  </div>
+                )}
+
+                {secError && (
+                  <div className="bg-rose-50 border border-rose-100 text-rose-800 text-xs p-3.5 rounded-lg font-semibold flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-650 shrink-0 mt-0.5" />
+                    <span>{secError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleUpdateSecureKey} className="space-y-4 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
+                        New Security Passcode
+                      </label>
+                      <input
+                        type="password"
+                        value={newPasscode}
+                        onChange={(e) => setNewPasscode(e.target.value)}
+                        placeholder="Min. 4 characters"
+                        className="w-full text-xs p-2.5 bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850 font-medium placeholder-slate-350"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1">
+                        Confirm Passcode Set
+                      </label>
+                      <input
+                        type="password"
+                        value={confirmPasscode}
+                        onChange={(e) => setConfirmPasscode(e.target.value)}
+                        placeholder="Re-type passcode"
+                        className="w-full text-xs p-2.5 bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-850 font-medium placeholder-slate-350"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Current passkey length: <strong className="text-slate-600 font-bold">{adminPasscode.length} chars</strong>
+                    </span>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition"
+                    >
+                      Update Passkey
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="bg-white border border-dashed border-slate-200 rounded-xl p-5 space-y-2.5">
+                <h5 className="text-xs font-bold text-slate-850">⚠️ Admin Environment Security Logs</h5>
+                <p className="text-[11px] text-slate-400 leading-normal">
+                  Sandbox credentials are saved in your local storage directory for instant simulation reload state. Clearing your browser cookies/storage resets the authorization key back to <strong className="text-indigo-600 font-semibold underline">admin123</strong>.
+                </p>
+              </div>
             </div>
           )}
         </div>
